@@ -1,16 +1,24 @@
 package com.dd2eg.backend.users;
 
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 
+@Getter
+@Setter
 public class User {
 
     @Id
-    public String Id;
+    private String Id;
 
-    public String username;
+    @Indexed(unique = true)
+    private String username;
 
-    public String email;
+    private String email;
 
-    public String password;
+    private String password;
+
+    private UserType userType = UserType.DEVELOPER;
 }
