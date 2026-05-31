@@ -1,36 +1,30 @@
 package com.dd2eg.backend.users;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@AllArgsConstructor
 @RestController
 @RequestMapping("/api")
 public class UserController {
 
-    @Autowired
-    UserRepository userRepository;
-
-    @Autowired
-    PasswordEncoder passwordEncoder;
+    private final UserService userService;
 
     @GetMapping("/users")
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return userService.getAllUsers();
     }
 
     @PostMapping("/users")
     public User createUser(@RequestBody User user) {
+        return userService.createUser(user);
+    }
 
-        String encodedPassword = passwordEncoder.encode(user.getPassword());
-        user.setPassword(encodedPassword);
-
-        User savedUser = userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser).getBody();
+    @GetMapping("/users/profile/")
+    public User getUserByEmail(@PathVariable String email) {
+        return userService.getUserByEmail(email);
     }
 
 }

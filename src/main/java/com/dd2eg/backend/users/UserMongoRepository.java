@@ -2,5 +2,5 @@ package com.dd2eg.backend.users;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface UserRepository  extends MongoRepository<User, String> {
+public interface UserMongoRepository extends MongoRepository<User, String> {
 }
