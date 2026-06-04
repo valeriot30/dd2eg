@@ -13,9 +13,9 @@ public class User {
     @Id
     private String Id;
 
-    @Indexed(unique = true)
     private String username;
 
+    @Indexed(unique = true)
     private String email;
 
     private String password;
