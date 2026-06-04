@@ -13,7 +13,7 @@ import java.util.List;
 public class Project {
 
     @Id
-    private String Id;
+    private String id;
 
     private String name;
 
@@ -27,6 +27,8 @@ public class Project {
     private String updatedAt;
 
     private Integer budget;
+
+    private Integer scamReports;
 
     public List<String> contributors; // only names of contributors
 
