@@ -3,8 +3,11 @@ package com.dd2eg.backend.auth;
 import com.dd2eg.backend.users.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Date;
 
 @Service
@@ -31,4 +34,40 @@ public class TokenService {
                 .getSubject();
     }
 
+    public boolean isTokenValid(String jwt, UserDetails userDetails) {
+        final String userId = extractUserId(jwt);
+
+        return (userId.equals(((com.dd2eg.backend.users.User) userDetails).getId())) && !isTokenExpired(jwt);
+    }
+
+    private boolean isTokenExpired(String jwt) {
+        return extractExpiration(jwt).before(new java.util.Date());
+    }
+
+    private java.util.Date extractExpiration(String jwt) {
+        return extractClaim(jwt, io.jsonwebtoken.Claims::getExpiration);
+    }
+
+    public <T> T extractClaim(String jwt, java.util.function.Function<io.jsonwebtoken.Claims, T> claimsResolver) {
+        final io.jsonwebtoken.Claims claims = extractAllClaims(jwt);
+        return claimsResolver.apply(claims);
+    }
+
+    public String extractUsername(String jwt) {
+        return extractClaim(jwt, io.jsonwebtoken.Claims::getSubject);
+    }
+
+    private io.jsonwebtoken.Claims extractAllClaims(String jwt) {
+        return io.jsonwebtoken.Jwts
+                .parser()
+                .setSigningKey(this.getSignInKey())
+                .build()
+                .parseClaimsJws(jwt)
+                .getBody();
+    }
+
+    private Key getSignInKey() {
+        byte[] keyBytes = SECRET.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
 }

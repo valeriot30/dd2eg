@@ -2,6 +2,8 @@ package com.dd2eg.backend.users;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.Optional;
+
 public interface UserMongoRepository extends MongoRepository<User, String> {
-    User findByEmail(String email);
+    Optional<User> findByEmail(String email);
 }

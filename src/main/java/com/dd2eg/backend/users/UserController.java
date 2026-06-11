@@ -24,6 +24,6 @@ public class UserController {
 
     @GetMapping("/users/profile/")
     public User getUserByEmail(@PathVariable String email) {
-        return userService.getUserByEmail(email);
+        return userService.getUserByEmail(email).orElseThrow(null);
     }
 }
