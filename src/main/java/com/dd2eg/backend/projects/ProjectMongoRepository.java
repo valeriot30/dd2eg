@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface ProjectMongoRepository extends MongoRepository<Project, String> {
     List<Project> findAllBy(TextCriteria textCriteria);
+    List<Project> findByTagsIn(List<String> tags);
 }

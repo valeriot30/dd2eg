@@ -66,4 +66,19 @@ public class ProjectController {
         return ResponseEntity.ok(searchResults);
     }
 
+    /**
+     * Filter projects by tags
+     * URL: GET /api/projects/filter?tags=react,spring,mongodb
+     * @param tags the tags provided by the frontend
+     * @return a list of projects matching the tags
+     */
+    @GetMapping("/filter")
+    public ResponseEntity<List<Project>> filterProjects(
+            @RequestParam(name = "tags", required = false) List<String> tags) {
+
+        List<Project> filteredProjects = projectService.filterProjectsByTags(tags);
+
+        return ResponseEntity.ok(filteredProjects);
+    }
+
 }

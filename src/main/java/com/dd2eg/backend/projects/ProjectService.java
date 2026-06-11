@@ -101,4 +101,19 @@ public class ProjectService {
 
         return projectRepository.findAllBy(criteria);
     }
+
+    /**
+     * Filter projects by a list of tags
+     * @param tags list of tags to filter by
+     * @return list of matching projects
+     */
+    public List<Project> filterProjectsByTags(List<String> tags) {
+
+        // If the frontend sends an empty list, return all projects
+        if (tags == null || tags.isEmpty()) {
+            return projectRepository.findAll();
+        }
+
+        return projectRepository.findByTagsIn(tags);
+    }
 }
