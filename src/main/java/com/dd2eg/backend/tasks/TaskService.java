@@ -2,6 +2,7 @@ package com.dd2eg.backend.tasks;
 
 import com.dd2eg.backend.projects.Project;
 import com.dd2eg.backend.projects.ProjectMongoRepository;
+import com.dd2eg.backend.tasks.comments.Comment;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
 import com.dd2eg.backend.users.User;
@@ -35,6 +36,23 @@ public class TaskService {
         if (task.getSponsorships() == null) {
             task.setSponsorships(new ArrayList<>());
         }
+
+        return taskRepository.save(task);
+    }
+
+    public Task addCommentToTask(String taskId, String content, User author) {
+
+        //TODO check if task is open
+        // mongodb index for open tasks can be used to speed-up the look-up
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task non found"));
+
+        Comment newComment = new Comment();
+        newComment.setContent(content);
+        newComment.setAuthorId(author.getId());
+
+        task.getComments().add(newComment);
 
         return taskRepository.save(task);
     }

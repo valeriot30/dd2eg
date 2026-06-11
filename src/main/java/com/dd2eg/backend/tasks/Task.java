@@ -1,11 +1,13 @@
 package com.dd2eg.backend.tasks;
 
 import com.dd2eg.backend.projects.Project;
+import com.dd2eg.backend.tasks.comments.Comment;
 import com.dd2eg.backend.users.User;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Setter
@@ -30,4 +32,6 @@ public class Task {
     private String projectId;
 
     private List<User> sponsorships;
+
+    private List<Comment> comments = new ArrayList<>();
 }

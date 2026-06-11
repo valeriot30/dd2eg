@@ -1,9 +1,14 @@
 package com.dd2eg.backend.tasks;
 
+import com.dd2eg.backend.tasks.dto.CreateCommentDTO;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
+import com.dd2eg.backend.users.User;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +27,22 @@ public class TaskController {
             @RequestBody FundTaskRequestDTO request
     ) {
         return taskService.fundTask(taskId, request);
+    }
+
+    @PostMapping("/{taskId}/comments/add")
+    public ResponseEntity<?> addComment(
+            @PathVariable String taskId,
+            @Valid @RequestBody CreateCommentDTO dto,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            Task updatedTask = taskService.addCommentToTask(taskId, dto.getContent(), currentUser);
+
+            return ResponseEntity.ok(updatedTask);
+
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/{projectId}")
