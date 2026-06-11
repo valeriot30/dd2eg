@@ -2,6 +2,7 @@ package com.dd2eg.backend.projects;
 
 import com.dd2eg.backend.users.User;
 import lombok.AllArgsConstructor;
+import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -83,5 +84,21 @@ public class ProjectService {
         project.getContributors().remove(username);
 
         return projectRepository.save(project);
+    }
+    /**
+     * Search projects by name using MongoDB Text Search
+     * @param keyword the search query
+     * @return list of projects matching the keyword
+     */
+    public List<Project> searchProjects(String keyword) {
+
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return projectRepository.findAll();
+        }
+
+        TextCriteria criteria = TextCriteria.forDefaultLanguage()
+                .matchingAny(keyword.trim());
+
+        return projectRepository.findAllBy(criteria);
     }
 }

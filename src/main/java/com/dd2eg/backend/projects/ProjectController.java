@@ -57,4 +57,13 @@ public class ProjectController {
         }
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<Project>> searchProjects(
+            @RequestParam(name = "q", required = false) String query) {
+
+        List<Project> searchResults = projectService.searchProjects(query);
+
+        return ResponseEntity.ok(searchResults);
+    }
+
 }
