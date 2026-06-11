@@ -24,6 +24,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/tasks/add").permitAll()
+                        .requestMatchers("/api/projects/**").permitAll()
                         .requestMatchers("/api/recommendations/**").permitAll()
                         .requestMatchers("/api/recommendations/financing").hasAuthority("ENTERPRISE")
                         .requestMatchers("/api/tasks/*/fund").hasAuthority("ENTERPRISE")
