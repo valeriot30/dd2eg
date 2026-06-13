@@ -1,7 +1,13 @@
 package com.dd2eg.backend.projects;
 
+import com.dd2eg.backend.projects.dto.ProjectStatusDTO;
 import com.dd2eg.backend.users.User;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +19,8 @@ import java.util.List;
 public class ProjectService {
 
     private ProjectMongoRepository projectRepository;
+
+    private final MongoTemplate mongoTemplate;
 
     /**
      * Retrieve all projects
@@ -100,6 +108,32 @@ public class ProjectService {
                 .matchingAny(keyword.trim());
 
         return projectRepository.findAllBy(criteria);
+    }
+
+    /**
+     * Get total funding budget for OPEN projects
+     * @return the list of stats
+     */
+    public List<ProjectStatusDTO> getProjectStats() {
+
+        Aggregation aggregation = Aggregation.newAggregation(
+
+                Aggregation.match(Criteria.where("budget").gt(ProjectStatus.OPEN)),
+
+                Aggregation.group("status")
+                        .count().as("totalProjects")
+                        .sum("budget").as("totalBudget"),
+
+                Aggregation.sort(Sort.Direction.DESC, "totalProjects")
+        );
+
+        AggregationResults<ProjectStatusDTO> results = mongoTemplate.aggregate(
+                aggregation,
+                "projects",
+                ProjectStatusDTO.class
+        );
+
+        return results.getMappedResults();
     }
 
     /**

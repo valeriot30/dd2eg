@@ -1,7 +1,16 @@
 package com.dd2eg.backend.users;
 
+import com.dd2eg.backend.tasks.Task;
+import com.dd2eg.backend.users.dto.EnterpriseStatsDTO;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.ComparisonOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +29,8 @@ public class UserService {
     PasswordEncoder passwordEncoder;
 
     private final UserMongoRepository userRepository;
+
+    private final MongoTemplate mongoTemplate;
 
     private User getUserById(String id) {
         return userRepository.findById(id).orElse(null);
@@ -45,6 +56,52 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser).getBody();
+    }
+
+    public EnterpriseStatsDTO getEnterpriseDashboardStats(String enterpriseId) {
+        Aggregation aggregation = Aggregation.newAggregation(
+
+                Aggregation.match(Criteria.where("enterpriseId").is(enterpriseId)),
+
+                Aggregation.group()
+                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("OPEN"))
+                                .then(1).otherwise(0)).as("openedTasks")
+
+                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("COMPLETED"))
+                                .then(1).otherwise(0)).as("completedTasks")
+
+                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("COMPLETED"))
+                                .thenValueOf("$budget").otherwise(0)).as("totalBudgetSpent")
+        );
+
+        AggregationResults<EnterpriseStatsDTO> results = mongoTemplate.aggregate(
+                aggregation,
+                "tasks",
+                EnterpriseStatsDTO.class
+        );
+
+        EnterpriseStatsDTO dashboardData = results.getUniqueMappedResult();
+        if (dashboardData == null) {
+            dashboardData = new EnterpriseStatsDTO();
+        }
+
+        Query query = new Query(Criteria.where("enterpriseId").is(enterpriseId));
+        List<String> uniqueDevelopers = mongoTemplate.findDistinct(
+                query,
+                "contributors",
+                Task.class,
+                String.class
+        );
+
+        dashboardData.setUniqueDevelopersInvolved(uniqueDevelopers.size());
+
+        return dashboardData;
+    }
+
+    public EnterpriseStatsDTO getDashboardStats(String enterpriseId) {
+
+        //TODO CHECK IF USER IS ENTERPRISE, OTHERWISE RETURN USER DASHBOARD
+        return this.getEnterpriseDashboardStats(enterpriseId);
     }
 
 
