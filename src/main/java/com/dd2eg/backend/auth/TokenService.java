@@ -1,6 +1,7 @@
 package com.dd2eg.backend.auth;
 
 import com.dd2eg.backend.users.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -57,13 +58,12 @@ public class TokenService {
         return extractClaim(jwt, io.jsonwebtoken.Claims::getSubject);
     }
 
-    private io.jsonwebtoken.Claims extractAllClaims(String jwt) {
-        return io.jsonwebtoken.Jwts
-                .parser()
-                .setSigningKey(this.getSignInKey())
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)))
                 .build()
-                .parseClaimsJws(jwt)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private Key getSignInKey() {

@@ -109,7 +109,6 @@ public class ProjectService {
      */
     public List<Project> filterProjectsByTags(List<String> tags) {
 
-        // If the frontend sends an empty list, return all projects
         if (tags == null || tags.isEmpty()) {
             return projectRepository.findAll();
         }
