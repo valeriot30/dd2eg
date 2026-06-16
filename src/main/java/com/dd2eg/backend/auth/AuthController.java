@@ -6,6 +6,9 @@ import com.dd2eg.backend.users.User;
 import com.dd2eg.backend.users.UserService;
 import com.dd2eg.backend.users.UserType;
 import com.dd2eg.backend.utils.Message;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -21,12 +24,20 @@ import java.util.Optional;
 @RestController
 @Slf4j
 @RequestMapping("/api/auth")
+@Tag(name = "Auth", description = "Authentication APIs (login, signup, user session)")
 public class AuthController {
 
     private final UserService userService;
     private final TokenService jwtService;
     private final PasswordEncoder passwordEncoder;
 
+    @Operation(
+            summary = "Login user",
+            description = "Authenticates user and returns JWT token"
+    )
+    @ApiResponse(responseCode = "200", description = "Login successful (JWT token returned)")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    @ApiResponse(responseCode = "404", description = "User not found")
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
 
@@ -51,7 +62,13 @@ public class AuthController {
         return ResponseEntity.ok(token);
     }
 
-    @PostMapping("/me")
+    @Operation(
+            summary = "Get current authenticated user",
+            description = "Returns information about the logged-in user based on JWT token"
+    )
+    @ApiResponse(responseCode = "200", description = "User retrieved successfully")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
         if (user == null) {
             return ResponseEntity.status(401).body("Unauthorized");
@@ -65,6 +82,12 @@ public class AuthController {
         ));
     }
 
+    @Operation(
+            summary = "Register new user",
+            description = "Creates a new user and returns JWT token"
+    )
+    @ApiResponse(responseCode = "201", description = "User created successfully")
+    @ApiResponse(responseCode = "409", description = "Email already exists")
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
 
