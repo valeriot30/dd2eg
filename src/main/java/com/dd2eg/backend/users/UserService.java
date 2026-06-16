@@ -1,8 +1,13 @@
 package com.dd2eg.backend.users;
 
 import com.dd2eg.backend.tasks.Task;
+import com.dd2eg.backend.tasks.events.Event;
+import com.dd2eg.backend.tasks.events.EventRepository;
+import com.dd2eg.backend.tasks.events.EventType;
 import com.dd2eg.backend.users.dto.EnterpriseStatsDTO;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -29,7 +34,7 @@ public class UserService {
     PasswordEncoder passwordEncoder;
 
     private final UserMongoRepository userRepository;
-
+    private final EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
 
     private User getUserById(String id) {
@@ -49,12 +54,24 @@ public class UserService {
      * @param the created user
      * @return The created user
      */
+    @Transactional
     public User createUser(@RequestBody User user) {
 
         String encodedPassword = passwordEncoder.encode(user.getPassword());
         user.setPassword(encodedPassword);
 
         User savedUser = userRepository.save(user);
+
+        Event event = new Event();
+        event.setType(EventType.ADD_USER);
+
+        Document document = new Document();
+        document.put("userId", user.getId());
+        document.put("skills", user.getSkills());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser).getBody();
     }
 

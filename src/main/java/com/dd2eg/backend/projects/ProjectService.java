@@ -1,17 +1,23 @@
 package com.dd2eg.backend.projects;
 
+import com.dd2eg.backend.projects.dto.CreateProjectDTO;
 import com.dd2eg.backend.projects.dto.ProjectStatusDTO;
+import com.dd2eg.backend.tasks.events.Event;
+import com.dd2eg.backend.tasks.events.EventRepository;
+import com.dd2eg.backend.tasks.events.EventType;
 import com.dd2eg.backend.users.User;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.bson.Document;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.TextCriteria;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @AllArgsConstructor
@@ -19,7 +25,7 @@ import java.util.List;
 public class ProjectService {
 
     private ProjectMongoRepository projectRepository;
-
+    private EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
 
     /**
@@ -32,18 +38,33 @@ public class ProjectService {
 
     /**
      * Create a project
-     * @param Project project
+     * @param project
      * @return the created entity
      */
-    public Project createProject(Project project) {
-        project.setCreatedAt(java.time.Instant.now().toString());
-        project.setUpdatedAt(java.time.Instant.now().toString());
+    @Transactional
+    public Project createProject(CreateProjectDTO project,  @AuthenticationPrincipal User currentUser) {
 
-        if (project.getStatus() == null) {
-            project.setStatus(ProjectStatus.OPEN);
+        Project newProject = new Project();
+
+        newProject.setCreatedAt(java.time.Instant.now().toString());
+        newProject.setUpdatedAt(java.time.Instant.now().toString());
+
+        if (newProject.getStatus() == null) {
+            newProject.setStatus(ProjectStatus.OPEN);
         }
 
-        return projectRepository.save(project);
+        Event event = new Event();
+        event.setType(EventType.ADD_TASK);
+
+        Document document = new Document();
+        document.put("projectId", newProject.getId());
+        document.put("status", newProject.getStatus());
+        document.put("tags", project.getTags());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
+
+        return newProject;
     }
 
     /**
@@ -52,6 +73,7 @@ public class ProjectService {
      * @param currentUser
      * @return
      */
+    @Transactional
     public Project addContributorToProject(String projectId, User currentUser) {
 
         Project project = projectRepository.findById(projectId)
@@ -68,6 +90,16 @@ public class ProjectService {
         }
 
         project.getContributors().add(username);
+
+        Event event = new Event();
+        event.setType(EventType.ADD_CONTRIBUTOR_TO_PROJECT);
+
+        Document document = new Document();
+        document.put("projectId", project.getId());
+        document.put("contributorId", currentUser.getId());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
 
         return projectRepository.save(project);
     }
