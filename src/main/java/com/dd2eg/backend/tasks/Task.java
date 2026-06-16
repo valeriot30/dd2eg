@@ -31,6 +31,10 @@ public class Task {
 
     private String projectId;
 
+    private Integer budget;
+
+    // we save name of the enterprise and the amount
+    // amount < budget
     private List<User> sponsorships;
 
     private List<Comment> comments = new ArrayList<>();
