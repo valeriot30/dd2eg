@@ -108,6 +108,7 @@ public class TaskService {
 
         Document document = new Document();
         document.put("taskId", task.getId());
+        document.put("skills", task.getSkills());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);

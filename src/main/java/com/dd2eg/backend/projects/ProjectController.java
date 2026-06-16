@@ -1,5 +1,6 @@
 package com.dd2eg.backend.projects;
 
+import com.dd2eg.backend.projects.dto.CreateProjectDTO;
 import com.dd2eg.backend.users.User;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,9 +24,9 @@ public class ProjectController {
     }
 
     @PostMapping("/")
-    public Project createProject(@RequestBody Project project) {
+    public Project createProject(@RequestBody CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
         log.info("Creating new project: {}", project.getName());
-        return projectService.createProject(project);
+        return projectService.createProject(project, currentUser);
     }
 
     @PostMapping("/{projectId}/join")
