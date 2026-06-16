@@ -34,6 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/recommendations/**").permitAll()
                         .requestMatchers("/api/recommendations/financing").hasAuthority("ENTERPRISE")
                         .requestMatchers("/api/tasks/*/fund").hasAuthority("ENTERPRISE")
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
