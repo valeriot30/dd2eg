@@ -19,4 +19,5 @@ public class Event {
     private int retryCount = 0;
     private String errorMessage;
     private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime processedAt;
 }
