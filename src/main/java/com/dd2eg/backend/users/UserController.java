@@ -1,6 +1,9 @@
 package com.dd2eg.backend.users;
 
 import com.dd2eg.backend.users.dto.EnterpriseStatsDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -8,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Users", description = "Users management API")
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api")
@@ -15,21 +19,44 @@ public class UserController {
 
     private final UserService userService;
 
+    @Operation(
+            summary = "Get all users",
+            description = "Returns a list of all registered users"
+    )
+    @ApiResponse(responseCode = "200", description = "Users retrieved successfully")
     @GetMapping("/users")
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
 
+    @Operation(
+            summary = "Create a new user",
+            description = "Creates a new user in the system"
+    )
+    @ApiResponse(responseCode = "200", description = "User created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid user data")
     @PostMapping("/users")
     public User createUser(@RequestBody User user) {
         return userService.createUser(user);
     }
 
-    @GetMapping("/users/profile/")
+    @Operation(
+            summary = "Get user by email",
+            description = "Returns a user based on their email address"
+    )
+    @ApiResponse(responseCode = "200", description = "User found successfully")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @GetMapping("/users/profile/{email}")
     public User getUserByEmail(@PathVariable String email) {
         return userService.getUserByEmail(email).orElseThrow(null);
     }
 
+    @Operation(
+            summary = "Get enterprise dashboard",
+            description = "Returns dashboard statistics for the authenticated enterprise user"
+    )
+    @ApiResponse(responseCode = "200", description = "Dashboard data retrieved successfully")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
     @GetMapping("/users/dashboard")
     public ResponseEntity<EnterpriseStatsDTO> getMyDashboard(@AuthenticationPrincipal User currentUser) {
 
