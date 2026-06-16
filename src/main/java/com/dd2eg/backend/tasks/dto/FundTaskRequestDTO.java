@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class FundTaskRequestDTO {
-    private String enterpriseUserId;
     private String taskId;
+    private int amount;
 }

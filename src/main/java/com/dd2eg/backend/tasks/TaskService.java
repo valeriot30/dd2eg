@@ -5,10 +5,16 @@ import com.dd2eg.backend.projects.ProjectMongoRepository;
 import com.dd2eg.backend.tasks.comments.Comment;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
+import com.dd2eg.backend.tasks.events.Event;
+import com.dd2eg.backend.tasks.events.EventRepository;
+import com.dd2eg.backend.tasks.events.EventType;
 import com.dd2eg.backend.users.User;
 import com.dd2eg.backend.users.UserMongoRepository;
 import com.dd2eg.backend.users.UserType;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.apache.coyote.BadRequestException;
+import org.bson.Document;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,13 +24,16 @@ import java.util.List;
 @Service
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final EventRepository eventRepository;
     private final UserMongoRepository userRepository;
     private final ProjectMongoRepository projectRepository;
 
-    public Task fundTask(String taskId, FundTaskRequestDTO request) {
+    @Transactional
+    public Task fundTask(String taskId, FundTaskRequestDTO request, User enterprise) {
 
-        User enterprise = userRepository.findById(request.getEnterpriseUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if(enterprise == null) {
+            throw new RuntimeException("Enterprise is null");
+        }
 
         if (enterprise.getUserType() != UserType.ENTERPRISE) {
             throw new RuntimeException("Only enterprises can fund tasks");
@@ -36,6 +45,16 @@ public class TaskService {
         if (task.getSponsorships() == null) {
             task.setSponsorships(new ArrayList<>());
         }
+
+        Event event = new Event();
+        event.setType(EventType.FUNDING);
+
+        Document document = new Document();
+        document.put("taskId", task.getId());
+        document.put("enterpriseId", enterprise.getId());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
 
         return taskRepository.save(task);
     }
@@ -62,6 +81,7 @@ public class TaskService {
         return taskRepository.findByProjectId(projectId);
     }
 
+    @Transactional
     public Task createTask(CreateTaskDTO request) {
 
         Project project = projectRepository.findById(request.getProjectId())
@@ -81,6 +101,17 @@ public class TaskService {
 
         task.setSponsorships(new ArrayList<>());
 
-        return taskRepository.save(task);
+        Task saved = taskRepository.save(task);
+
+        Event event = new Event();
+        event.setType(EventType.ADD_TASK);
+
+        Document document = new Document();
+        document.put("taskId", task.getId());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
+
+        return saved;
     }
 }
