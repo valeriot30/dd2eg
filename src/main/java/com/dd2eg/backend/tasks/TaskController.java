@@ -22,11 +22,14 @@ public class TaskController {
     private final TaskService taskService;
 
     @PostMapping("/{taskId}/fund")
-    public Task fundTask(
+    public ResponseEntity<Task> fundTask(
             @PathVariable String taskId,
-            @RequestBody FundTaskRequestDTO request
-    ) {
-        return taskService.fundTask(taskId, request);
+            @RequestBody FundTaskRequestDTO request,
+            @AuthenticationPrincipal User currentUser) {
+
+        Task updatedTask = taskService.fundTask(taskId, request, currentUser);
+
+        return ResponseEntity.ok(updatedTask);
     }
 
     @PostMapping("/{taskId}/comments/add")
