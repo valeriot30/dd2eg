@@ -59,6 +59,8 @@ public class ProjectService {
             newProject.setStatus(ProjectStatus.OPEN);
         }
 
+        newProject.setCreatorId(currentUser.getId());
+
         Event event = new Event();
         event.setType(EventType.ADD_TASK);
 

@@ -110,4 +110,23 @@ public class TaskController {
         return taskService.createTask(request);
     }
 
+    @Operation(
+            summary = "Accept a task",
+            description = "Allows the project creator to accept a pending task and move it to OPEN status"
+    )
+    @ApiResponse(responseCode = "200", description = "Task accepted successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request or business rule violation")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PutMapping("/{taskId}/accept")
+    public ResponseEntity<?> acceptTask(
+            @PathVariable String taskId,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            Task updatedTask = taskService.acceptTask(taskId, currentUser);
+            return ResponseEntity.ok(updatedTask);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }

@@ -136,16 +136,39 @@ public class TaskService {
 
         Task saved = taskRepository.save(task);
 
+        return saved;
+    }
+
+    @Transactional
+    public Task acceptTask(String taskId, User currentUser) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        if (task.getStatus() != TaskStatus.PENDING) {
+            throw new RuntimeException("Task is not in PENDING state");
+        }
+
+        Project project = projectRepository.findById(task.getProjectId())
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        if (project.getCreatorId() == null || !currentUser.getId().equals(project.getCreatorId())) {
+            throw new RuntimeException("Only the project creator can accept tasks");
+        }
+
+        task.setStatus(TaskStatus.OPEN);
+
         Event event = new Event();
         event.setType(EventType.ADD_TASK);
 
         Document document = new Document();
         document.put("taskId", task.getId());
+        document.put("projectId", project.getId());
+        document.put("acceptedBy", currentUser.getId());
         document.put("skills", task.getSkills());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
 
-        return saved;
+        return taskRepository.save(task);
     }
 }
