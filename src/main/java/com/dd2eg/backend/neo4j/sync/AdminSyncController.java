@@ -1,4 +1,4 @@
-package com.dd2eg.backend.sync;
+package com.dd2eg.backend.neo4j.sync;
 
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
@@ -14,13 +14,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Controller REST per la gestione manuale della sincronizzazione Neo4j.
- * Accessibile solo agli amministratori.
+ * REST controller for manual Neo4j synchronization management.
+ * Accessible only by administrators.
  *
- * Permette di:
- * - Visualizzare gli eventi FAILED
- * - Ritentare il sync manualmente (singolo o batch)
- * - Consultare le statistiche di sync
+ * Allows to:
+ * - View FAILED events
+ * - Manually retry sync (single or batch)
+ * - View sync statistics
  */
 @RestController
 @RequestMapping("/api/admin/sync")
@@ -36,7 +36,7 @@ public class AdminSyncController {
     }
 
     /**
-     * Riprocessa tutti gli eventi FAILED.
+     * Reprocesses all FAILED events.
      * POST /api/admin/sync/retry-all
      */
     @Operation(
@@ -56,7 +56,7 @@ public class AdminSyncController {
     }
 
     /**
-     * Riprocessa un singolo evento FAILED.
+     * Reprocesses a single FAILED event.
      * POST /api/admin/sync/retry/{eventId}
      */
     @Operation(
@@ -84,7 +84,7 @@ public class AdminSyncController {
     }
 
     /**
-     * Lista tutti gli eventi FAILED.
+     * Lists all FAILED events.
      * GET /api/admin/sync/failed
      */
     @Operation(
@@ -99,7 +99,7 @@ public class AdminSyncController {
     }
 
     /**
-     * Statistiche di sincronizzazione.
+     * Synchronization statistics.
      * GET /api/admin/sync/stats
      */
     @Operation(
