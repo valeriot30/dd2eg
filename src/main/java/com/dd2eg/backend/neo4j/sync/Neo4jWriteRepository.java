@@ -1,4 +1,4 @@
-package com.dd2eg.backend.sync;
+package com.dd2eg.backend.neo4j.sync;
 
 import org.neo4j.driver.*;
 import org.slf4j.Logger;
@@ -9,11 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Repository per le operazioni di SCRITTURA su Neo4j.
- * Usa MERGE per garantire idempotenza: se un evento viene riprocessato,
- * non si creano nodi o relazioni duplicati.
+ * Repository for WRITE operations on Neo4j.
+ * Uses MERGE to ensure idempotency: if an event is reprocessed,
+ * no duplicate nodes or relationships are created.
  *
- * Separato dal Neo4jRecommendationRepository che gestisce solo le letture.
+ * Separated from Neo4jRecommendationRepository which handles reads only.
  */
 @Repository
 public class Neo4jWriteRepository {
@@ -27,23 +27,23 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * ADD_USER — Crea nodo Developer o Enterprise con le sue Skill.
-     * Label dinamica basata sul tipo utente.
+     * ADD_USER — Creates a Developer or Enterprise node with its Skills.
+     * Dynamic label based on user type.
      *
-     * Grafo risultante:
-     *   (:Developer {id})-[:HAS_SKILL]->(:Skill {name})
-     *   (:Enterprise {id})
+     * Resulting graph:
+     * (:Developer {id})-[:HAS_SKILL]->(:Skill {name})
+     * (:Enterprise {id})
      */
     public void createUser(String userId, String userType, List<String> skillNames) {
         String label = "ENTERPRISE".equalsIgnoreCase(userType) ? "Enterprise" : "Developer";
 
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
-                // Crea il nodo utente con il label corretto
+                // Create the user node with the correct label
                 tx.run("MERGE (u:" + label + " {id: $userId})",
                         Map.of("userId", userId));
 
-                // Per i Developer, crea le skill e le relazioni HAS_SKILL
+                // For Developers, create skills and HAS_SKILL relationships
                 if ("Developer".equals(label) && skillNames != null) {
                     for (String skillName : skillNames) {
                         tx.run("""
@@ -61,19 +61,30 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * ADD_PROJECT — Crea nodo Project con i Tag associati.
+     * ADD_PROJECT — Creates a Project node with its associated Tags.
      *
-     * Grafo risultante:
-     *   (:Project {id, status})-[:CATEGORIZED_BY]->(:Tag {name})
+     * Resulting graph:
+     * (:Developer {id})-[:CREATED]->(:Project {id, status})
+     * (:Project {id, status})-[:CATEGORIZED_BY]->(:Tag {name})
      */
-    public void createProject(String projectId, String status, List<String> tags) {
+    public void createProject(String projectId, String creatorId, String status, List<String> tags) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
-                // Crea il nodo progetto
+                // Create the project node
                 tx.run("MERGE (p:Project {id: $projectId}) SET p.status = $status",
                         Map.of("projectId", projectId, "status", status));
 
-                // Crea i tag e le relazioni CATEGORIZED_BY
+                // Create the CREATED relationship from the developer
+                if (creatorId != null) {
+                    tx.run("""
+                            MATCH (d:Developer {id: $creatorId})
+                            MATCH (p:Project {id: $projectId})
+                            MERGE (d)-[:CREATED]->(p)
+                            """,
+                            Map.of("creatorId", creatorId, "projectId", projectId));
+                }
+
+                // Create tags and CATEGORIZED_BY relationships
                 if (tags != null) {
                     for (String tagName : tags) {
                         tx.run("""
@@ -87,21 +98,22 @@ public class Neo4jWriteRepository {
                 return null;
             });
         }
-        log.debug("[Neo4jWrite] Created Project node: {} with {} tags", projectId,
-                tags != null ? tags.size() : 0);
+        log.debug("[Neo4jWrite] Created Project node: {} by creator: {} with {} tags", projectId,
+                creatorId, tags != null ? tags.size() : 0);
     }
 
     /**
-     * ADD_TASK — Crea nodo Task, lo collega al Project, e crea le Skill richieste.
+     * ADD_TASK — Creates a Task node, links it to the Project, and creates required
+     * Skills.
      *
-     * Grafo risultante:
-     *   (:Task {id, status})-[:BELONGS_TO]->(:Project {id})
-     *   (:Task {id})-[:REQUIRES_SKILL]->(:Skill {name})
+     * Resulting graph:
+     * (:Task {id, status})-[:BELONGS_TO]->(:Project {id})
+     * (:Task {id})-[:REQUIRES_SKILL]->(:Skill {name})
      */
     public void createTask(String taskId, String projectId, List<String> skills) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
-                // Crea il nodo task e collegalo al progetto
+                // Create the task node and link it to the project
                 tx.run("""
                         MERGE (t:Task {id: $taskId})
                         SET t.status = 'open'
@@ -111,7 +123,7 @@ public class Neo4jWriteRepository {
                         """,
                         Map.of("taskId", taskId, "projectId", projectId));
 
-                // Crea le skill richieste e le relazioni REQUIRES_SKILL
+                // Create required skills and REQUIRES_SKILL relationships
                 if (skills != null) {
                     for (String skillName : skills) {
                         tx.run("""
@@ -129,10 +141,10 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * FUNDING — Crea relazione FINANCED tra Enterprise e Task.
+     * FUNDING — Creates a FINANCED relationship between Enterprise and Task.
      *
-     * Grafo risultante:
-     *   (:Enterprise {id})-[:FINANCED]->(:Task {id})
+     * Resulting graph:
+     * (:Enterprise {id})-[:FINANCED]->(:Task {id})
      */
     public void createFunding(String enterpriseId, String taskId) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
@@ -150,10 +162,11 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * ADD_CONTRIBUTOR_TO_PROJECT — Crea relazione CONTRIBUTED_TO tra Developer e Project.
+     * ADD_CONTRIBUTOR_TO_PROJECT — Creates a CONTRIBUTED_TO relationship between
+     * Developer and Project.
      *
-     * Grafo risultante:
-     *   (:Developer {id})-[:CONTRIBUTED_TO]->(:Project {id})
+     * Resulting graph:
+     * (:Developer {id})-[:CONTRIBUTED_TO]->(:Project {id})
      */
     public void addContributorToProject(String developerId, String projectId) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
