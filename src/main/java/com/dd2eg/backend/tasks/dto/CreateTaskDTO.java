@@ -11,7 +11,7 @@ public class CreateTaskDTO {
     private String description;
     private String body;
 
-    private Integer priority;
+    private String priority;
     private Integer numMaxCommits;
 
     private String projectId;
