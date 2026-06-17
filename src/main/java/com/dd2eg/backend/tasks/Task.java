@@ -1,12 +1,11 @@
 package com.dd2eg.backend.tasks;
 
-import com.dd2eg.backend.projects.Project;
-import com.dd2eg.backend.skills.Skill;
 import com.dd2eg.backend.tasks.comments.Comment;
 import com.dd2eg.backend.users.User;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +23,7 @@ public class Task {
 
     private String body;
 
+    @Indexed(partialFilter = "{ status: 'OPEN' }")
     private TaskStatus status;
 
     private String priority;
