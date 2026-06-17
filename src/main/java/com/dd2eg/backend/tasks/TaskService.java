@@ -3,6 +3,9 @@ package com.dd2eg.backend.tasks;
 import com.dd2eg.backend.projects.Project;
 import com.dd2eg.backend.projects.ProjectMongoRepository;
 import com.dd2eg.backend.tasks.comments.Comment;
+import com.dd2eg.backend.tasks.commits.Commit;
+import com.dd2eg.backend.tasks.commits.CommitMongoRepository;
+import com.dd2eg.backend.tasks.dto.CreateCommitDTO;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
 import com.dd2eg.backend.tasks.events.Event;
@@ -27,6 +30,7 @@ public class TaskService {
     private final EventRepository eventRepository;
     private final UserMongoRepository userRepository;
     private final ProjectMongoRepository projectRepository;
+    private final CommitMongoRepository commitRepository;
 
     @Transactional
     public Task fundTask(String taskId, FundTaskRequestDTO request, User enterprise) {
@@ -74,6 +78,35 @@ public class TaskService {
         task.getComments().add(newComment);
 
         return taskRepository.save(task);
+    }
+
+    @Transactional
+    public Commit addCommitToTask(String taskId, CreateCommitDTO request, User author) {
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        // Create and save commit
+        Commit commit = new Commit();
+        commit.setHash(request.getHash());
+        commit.setComment(request.getComment());
+        commit.setNumLines(request.getNumLines());
+        commit.setTaskId(taskId);
+        commit.setAuthorId(author.getId());
+        
+        Commit savedCommit = commitRepository.save(commit);
+
+        // Calculate and update user rating
+        if (task.getNumMaxCommits() != null && task.getNumMaxCommits() > 0) {
+            Double currentRating = author.getRating();
+            if (currentRating == null) {
+                currentRating = 0.0;
+            }
+            author.setRating(Math.min(5.0, currentRating + (1.0 / task.getNumMaxCommits())));
+            userRepository.save(author);
+        }
+
+        return savedCommit;
     }
 
     public List<Task> getTasksByProjectId(String projectId) {

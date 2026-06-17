@@ -1,5 +1,7 @@
 package com.dd2eg.backend.tasks;
 
+import com.dd2eg.backend.tasks.commits.Commit;
+import com.dd2eg.backend.tasks.dto.CreateCommitDTO;
 import com.dd2eg.backend.tasks.dto.CreateCommentDTO;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
@@ -63,6 +65,26 @@ public class TaskController {
 
         } catch (RuntimeException e) {
 
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Add commit to task",
+            description = "Adds a commit to a specific task and updates user rating"
+    )
+    @ApiResponse(responseCode = "200", description = "Commit added successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid task or commit data")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PostMapping("/{taskId}/commits/add")
+    public ResponseEntity<?> addCommit(
+            @PathVariable String taskId,
+            @Valid @RequestBody CreateCommitDTO dto,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            Commit commit = taskService.addCommitToTask(taskId, dto, currentUser);
+            return ResponseEntity.ok(commit);
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
