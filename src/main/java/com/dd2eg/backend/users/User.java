@@ -2,6 +2,7 @@ package com.dd2eg.backend.users;
 
 
 import com.dd2eg.backend.skills.Skill;
+import com.dd2eg.backend.users.dto.RecentProjectDTO;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
@@ -10,9 +11,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 @Getter
 @Setter
@@ -31,6 +32,8 @@ public class User implements UserDetails {
     private UserType userType = UserType.DEVELOPER;
 
     private List<Skill> skills;
+
+    private List<RecentProjectDTO> lastProjects = new ArrayList<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
