@@ -30,6 +30,7 @@ public class ProjectService {
 
     /**
      * Retrieve all projects
+     * 
      * @return
      */
     public List<Project> getAllProjects() {
@@ -38,11 +39,12 @@ public class ProjectService {
 
     /**
      * Create a project
+     * 
      * @param project
      * @return the created entity
      */
     @Transactional
-    public Project createProject(CreateProjectDTO project,  @AuthenticationPrincipal User currentUser) {
+    public Project createProject(CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
 
         Project newProject = new Project();
 
@@ -59,6 +61,7 @@ public class ProjectService {
         Document document = new Document();
         document.put("projectId", newProject.getId());
         document.put("status", newProject.getStatus());
+        document.put("creatorId", currentUser.getId());
         document.put("tags", project.getTags());
         event.setPayload(document.toJson());
 
@@ -68,7 +71,8 @@ public class ProjectService {
     }
 
     /**
-     *  Add a user to the contribution list of a project
+     * Add a user to the contribution list of a project
+     * 
      * @param projectId
      * @param currentUser
      * @return
@@ -106,6 +110,7 @@ public class ProjectService {
 
     /**
      * Remove a user from contribuition
+     * 
      * @param projectId
      * @param currentUser
      * @return
@@ -125,8 +130,10 @@ public class ProjectService {
 
         return projectRepository.save(project);
     }
+
     /**
      * Search projects by name using MongoDB Text Search
+     * 
      * @param keyword the search query
      * @return list of projects matching the keyword
      */
@@ -144,6 +151,7 @@ public class ProjectService {
 
     /**
      * Get total funding budget for OPEN projects
+     * 
      * @return the list of stats
      */
     public List<ProjectStatusDTO> getProjectStats() {
@@ -156,20 +164,19 @@ public class ProjectService {
                         .count().as("totalProjects")
                         .sum("budget").as("totalBudget"),
 
-                Aggregation.sort(Sort.Direction.DESC, "totalProjects")
-        );
+                Aggregation.sort(Sort.Direction.DESC, "totalProjects"));
 
         AggregationResults<ProjectStatusDTO> results = mongoTemplate.aggregate(
                 aggregation,
                 "projects",
-                ProjectStatusDTO.class
-        );
+                ProjectStatusDTO.class);
 
         return results.getMappedResults();
     }
 
     /**
      * Filter projects by a list of tags
+     * 
      * @param tags list of tags to filter by
      * @return list of matching projects
      */

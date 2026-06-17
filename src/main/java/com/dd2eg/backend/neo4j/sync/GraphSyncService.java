@@ -1,5 +1,7 @@
 package com.dd2eg.backend.neo4j.sync;
 
+import com.dd2eg.backend.neo4j.Neo4jRecommendationRepository;
+import com.dd2eg.backend.neo4j.dto.AnomalyDetectionDTO;
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventStatus;
@@ -8,6 +10,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +29,9 @@ import java.util.List;
  *
  * FAILED events can be manually reprocessed by the admin
  * through the AdminSyncController.
+ *
+ * After a FUNDING event is synced, triggers anomaly detection
+ * for the involved Enterprise and saves alerts to MongoDB.
  */
 @Service
 public class GraphSyncService {
@@ -37,10 +43,17 @@ public class GraphSyncService {
 
     private final EventRepository eventRepository;
     private final Neo4jWriteRepository neo4jWriteRepository;
+    private final Neo4jRecommendationRepository neo4jRecommendationRepository;
+    private final MongoTemplate mongoTemplate;
 
-    public GraphSyncService(EventRepository eventRepository, Neo4jWriteRepository neo4jWriteRepository) {
+    public GraphSyncService(EventRepository eventRepository,
+                            Neo4jWriteRepository neo4jWriteRepository,
+                            Neo4jRecommendationRepository neo4jRecommendationRepository,
+                            MongoTemplate mongoTemplate) {
         this.eventRepository = eventRepository;
         this.neo4jWriteRepository = neo4jWriteRepository;
+        this.neo4jRecommendationRepository = neo4jRecommendationRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /**
@@ -210,12 +223,13 @@ public class GraphSyncService {
 
     private void processAddProject(Document payload) {
         String projectId = payload.getString("projectId");
+        String creatorId = payload.getString("creatorId");
         Object statusObj = payload.get("status");
         String status = statusObj != null ? statusObj.toString().toLowerCase() : "open";
 
         List<String> tags = payload.getList("tags", String.class);
 
-        neo4jWriteRepository.createProject(projectId, status, tags);
+        neo4jWriteRepository.createProject(projectId, creatorId, status, tags);
     }
 
     private void processAddTask(Document payload) {
@@ -226,11 +240,53 @@ public class GraphSyncService {
         neo4jWriteRepository.createTask(taskId, projectId, skills);
     }
 
+    /**
+     * Processes a FUNDING event:
+     * 1. Creates the FINANCED relationship on Neo4j
+     * 2. Runs anomaly detection for the involved Enterprise
+     * 3. If suspicious cycles are found, saves alerts to the "anomaly_alerts" MongoDB collection
+     */
     private void processFunding(Document payload) {
         String enterpriseId = payload.getString("enterpriseId");
         String taskId = payload.getString("taskId");
 
+        // Step 1: Create the FINANCED relationship
         neo4jWriteRepository.createFunding(enterpriseId, taskId);
+
+        // Step 2: Run anomaly detection for this specific enterprise
+        try {
+            List<AnomalyDetectionDTO> anomalies =
+                    neo4jRecommendationRepository.detectAnomaliesForEnterprise(enterpriseId);
+
+            if (!anomalies.isEmpty()) {
+                log.warn("[AnomalyDetection] Enterprise {} — Found {} suspicious cycles after funding task {}",
+                        enterpriseId, anomalies.size(), taskId);
+
+                // Step 3: Save alerts to MongoDB
+                for (AnomalyDetectionDTO anomaly : anomalies) {
+                    Document alert = new Document();
+                    alert.put("enterpriseId", anomaly.getEnterpriseId());
+                    alert.put("suspiciousDeveloperId", anomaly.getSuspiciousDeveloperId());
+                    alert.put("cycleFrequency", anomaly.getCycleFrequency());
+                    alert.put("tasksWorked", anomaly.getTasksWorked());
+                    alert.put("financedTasksInTheirProject", anomaly.getFinancedTasksInTheirProject());
+                    alert.put("triggerTaskId", taskId);
+                    alert.put("detectedAt", LocalDateTime.now().toString());
+                    alert.put("resolved", false);
+
+                    mongoTemplate.save(alert, "anomaly_alerts");
+
+                    log.warn("[AnomalyDetection]   → Suspicious dev: {}, CycleFrequency: {}, Tasks: {}",
+                            anomaly.getSuspiciousDeveloperId(),
+                            anomaly.getCycleFrequency(),
+                            anomaly.getTasksWorked());
+                }
+            }
+        } catch (Exception e) {
+            // Anomaly detection failure should NOT block the sync
+            log.error("[AnomalyDetection] Error detecting anomalies for enterprise {}: {}",
+                    enterpriseId, e.getMessage());
+        }
     }
 
     private void processAddContributor(Document payload) {

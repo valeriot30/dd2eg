@@ -3,16 +3,17 @@ package com.dd2eg.backend.neo4j;
 import com.dd2eg.backend.neo4j.dto.AnomalyDetectionDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * Service per l'esecuzione schedulata della Query 5 — Anomaly Detection.
+ * Service for anomaly detection (Query 5 — Fraud Prevention).
  *
- * Non è esposta come API REST sincrona.
- * Viene eseguita in background ogni (6?) ore tramite @Scheduled.
+ * The primary detection is now event-driven: triggered automatically
+ * by GraphSyncService after each FUNDING event is synced to Neo4j.
+ *
+ * This service remains available for on-demand detection by admins.
  */
 @Service
 public class AnomalyDetectionService {
@@ -21,52 +22,30 @@ public class AnomalyDetectionService {
 
     private final Neo4jRecommendationRepository neo4jRepo;
 
-    // TODO: Fare anche un repository MongoDB per persistere gli alert
-    // private final AnomalyAlertMongoRepository alertRepository;
-
     public AnomalyDetectionService(Neo4jRecommendationRepository neo4jRepo) {
         this.neo4jRepo = neo4jRepo;
     }
 
-    @Scheduled(fixedRate = 6 * 60 * 60 * 1000) // esecuizione schedulata ogni 6 ore
-    public void runScheduledAnomalyDetection() {
-        log.info("[AnomalyDetection] Starting scheduled scan...");
-
-        List<String> enterpriseIds = List.of(); // sostituire!!!
-
-        for (String entId : enterpriseIds) {
-            try {
-                List<AnomalyDetectionDTO> anomalies = neo4jRepo.detectAnomalies();
-
-                if (!anomalies.isEmpty()) {
-                    log.warn("[AnomalyDetection] Enterprise {} — Found {} suspicious developers",
-                            entId, anomalies.size());
-
-                    for (AnomalyDetectionDTO anomaly : anomalies) {
-                        log.warn("  → Dev: {}, CycleFrequency: {}, TasksWorked: {}, FinancedTasks: {}",
-                                anomaly.getSuspiciousDeveloperId(),
-                                anomaly.getCycleFrequency(),
-                                anomaly.getTasksWorked(),
-                                anomaly.getFinancedTasksInTheirProject());
-                    }
-
-                    // TODO: Persistere su MongoDB collection "anomaly_alerts"
-                    // alertRepository.saveAll(toAlertDocuments(entId, anomalies));
-                }
-            } catch (Exception e) {
-                log.error("[AnomalyDetection] Error for Enterprise {}: {}", entId, e.getMessage(), e);
-            }
-        }
-
-        log.info("[AnomalyDetection] Scan completed.");
+    /**
+     * Runs anomaly detection for a specific Enterprise.
+     * Used by GraphSyncService (event-driven) and by admin on-demand.
+     *
+     * param enterpriseId the Enterprise to check for suspicious cycles
+     * return list of anomalies found
+     */
+    public List<AnomalyDetectionDTO> detectForEnterprise(String enterpriseId) {
+        log.info("[AnomalyDetection] Running detection for Enterprise: {}", enterpriseId);
+        return neo4jRepo.detectAnomaliesForEnterprise(enterpriseId);
     }
 
     /**
-     * Metodo pubblico per eseguire l'anomaly detection on-demand per una singola
-     * Enterprise.
-     * Usato internamente (es. da admin), mai come API pubblica sincrona.
+     * Runs anomaly detection for ALL enterprises (batch).
+     * Can be triggered by admin for a full scan.
+     *
+     * return list of all anomalies found
      */
-    public List<AnomalyDetectionDTO> detectForEnterprise(String entId) {
+    public List<AnomalyDetectionDTO> detectAll() {
+        log.info("[AnomalyDetection] Running batch detection for all enterprises...");
         return neo4jRepo.detectAnomalies();
     }
 }

@@ -116,6 +116,21 @@ public class Neo4jRecommendationRepository {
             ORDER BY CycleFrequency DESC
             """;
 
+    /**
+     * Query 5 (single enterprise) — Anomaly detection filtered by a specific Enterprise.
+     * Triggered after a FUNDING event is synced to Neo4j.
+     */
+    private static final String ANOMALY_DETECTION_SINGLE_QUERY = """
+            MATCH path = ((ent:Enterprise {id: $entId})-[:FINANCED]->(t1:Task)<-[:WORK_ON]-(dev:Developer)-[:CREATED]->(proj:Project)<-[:BELONGS_TO]-(t2:Task)<-[:FINANCED]-(ent))
+            WHERE t1 <> t2
+            RETURN ent.id AS EnterpriseId,
+                   dev.id AS SuspiciousDeveloper,
+                   count(path) AS CycleFrequency,
+                   collect(DISTINCT t1.id) AS TasksWorked,
+                   collect(DISTINCT t2.id) AS FinancedTasksInTheirProject
+            ORDER BY CycleFrequency DESC
+            """;
+
     public Neo4jRecommendationRepository(Driver driver) {
         this.driver = driver;
     }
@@ -203,6 +218,27 @@ public class Neo4jRecommendationRepository {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             return session.executeRead(tx -> {
                 Result result = tx.run(ANOMALY_DETECTION_BATCH_QUERY);
+
+                List<AnomalyDetectionDTO> anomalies = new ArrayList<>();
+                while (result.hasNext()) {
+                    Record record = result.next();
+                    anomalies.add(new AnomalyDetectionDTO(
+                            record.get("EnterpriseId").asString(),
+                            record.get("SuspiciousDeveloper").asString(),
+                            record.get("CycleFrequency").asLong(),
+                            record.get("TasksWorked").asList(Value::asString),
+                            record.get("FinancedTasksInTheirProject").asList(Value::asString)));
+                }
+                return anomalies;
+            });
+        }
+    }
+
+    // QUERY 5 (single) — Anomaly Detection for a specific Enterprise
+    public List<AnomalyDetectionDTO> detectAnomaliesForEnterprise(String enterpriseId) {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(ANOMALY_DETECTION_SINGLE_QUERY, Map.of("entId", enterpriseId));
 
                 List<AnomalyDetectionDTO> anomalies = new ArrayList<>();
                 while (result.hasNext()) {
