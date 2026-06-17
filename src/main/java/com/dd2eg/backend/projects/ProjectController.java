@@ -24,7 +24,7 @@ public class ProjectController {
 
     @Operation(summary = "Get all projects", description = "Returns a list of all projects in the system")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of projects")
-    @GetMapping("/")
+    @GetMapping
     public List<Project> getAllProjects() {
         return projectService.getAllProjects();
     }
@@ -36,7 +36,7 @@ public class ProjectController {
     @ApiResponse(responseCode = "200", description = "Project created successfully")
     @ApiResponse(responseCode = "400", description = "Invalid request data")
     @ApiResponse(responseCode = "401", description = "Unauthorized")
-    @PostMapping("/")
+    @PostMapping
     public Project createProject(@RequestBody CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
         log.info("Creating new project: {}", project.getName());
         return projectService.createProject(project, currentUser);

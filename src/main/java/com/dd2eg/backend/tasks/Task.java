@@ -26,7 +26,7 @@ public class Task {
 
     private TaskStatus status;
 
-    private Integer priority;
+    private String priority;
 
     private Integer numMaxCommits;
 

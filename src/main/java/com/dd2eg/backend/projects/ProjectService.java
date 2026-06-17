@@ -49,6 +49,10 @@ public class ProjectService {
         newProject.setCreatedAt(java.time.Instant.now().toString());
         newProject.setUpdatedAt(java.time.Instant.now().toString());
 
+        newProject.setName(project.getName());
+        newProject.setDescription(project.getDescription());
+        newProject.setTags(project.getTags());
+
         if (newProject.getStatus() == null) {
             newProject.setStatus(ProjectStatus.OPEN);
         }
@@ -58,11 +62,13 @@ public class ProjectService {
 
         Document document = new Document();
         document.put("projectId", newProject.getId());
-        document.put("status", newProject.getStatus());
+        document.put("status", newProject.getStatus().name());
         document.put("tags", project.getTags());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
+
+        projectRepository.save(newProject);
 
         return newProject;
     }
