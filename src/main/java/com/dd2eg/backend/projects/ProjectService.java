@@ -36,7 +36,7 @@ public class ProjectService {
     /**
      * Retrieve all projects
      * 
-     * @return
+     * @return the list of projects
      */
     public List<Project> getAllProjects() {
         return projectRepository.findAll();
@@ -55,7 +55,6 @@ public class ProjectService {
 
         newProject.setCreatedAt(java.time.Instant.now().toString());
         newProject.setUpdatedAt(java.time.Instant.now().toString());
-
         newProject.setName(project.getName());
         newProject.setDescription(project.getDescription());
         newProject.setTags(project.getTags());
@@ -85,7 +84,7 @@ public class ProjectService {
      * 
      * @param projectId
      * @param currentUser
-     * @return
+     * @return the project joined
      */
     @Transactional
     public Project addContributorToProject(String projectId, User currentUser) {
@@ -171,6 +170,8 @@ public class ProjectService {
 
         return projectRepository.save(project);
     }
+
+
 
     /**
      * Search projects by name using MongoDB Text Search
