@@ -30,6 +30,8 @@ public class User implements UserDetails {
 
     private UserType userType = UserType.DEVELOPER;
 
+    private Double rating = 0.0;
+
     private List<Skill> skills;
 
     @Override
