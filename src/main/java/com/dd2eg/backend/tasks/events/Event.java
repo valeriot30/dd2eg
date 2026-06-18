@@ -4,6 +4,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bson.json.JsonObject;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Sharded;
 import org.springframework.data.mongodb.core.mapping.ShardingStrategy;
@@ -14,6 +17,9 @@ import java.time.LocalDateTime;
 @Setter
 @Document(collection = "events")
 @Sharded(shardKey = { "_id" }, shardingStrategy = ShardingStrategy.HASH)
+@CompoundIndexes({
+        @CompoundIndex(name = "status_createdAt_idx", def = "{'status': 1, 'createdAt': 1}")
+})
 public class Event {
     @Id
     private String id;
@@ -23,5 +29,6 @@ public class Event {
     private int retryCount = 0;
     private String errorMessage;
     private LocalDateTime createdAt = LocalDateTime.now();
+    // @Indexed(expireAfterSeconds = 604800)
     private LocalDateTime processedAt;
 }
