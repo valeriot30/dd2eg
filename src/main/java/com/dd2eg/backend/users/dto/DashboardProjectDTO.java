@@ -7,6 +7,9 @@ import lombok.Setter;
 @Getter
 @Setter
 @AllArgsConstructor
-public class SkillDAO {
+public class DashboardProjectDTO {
     public String name;
+    public String description;
+    public Integer openTasks;
+    public Integer numContributors;
 }

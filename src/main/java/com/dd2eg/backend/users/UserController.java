@@ -1,10 +1,10 @@
 package com.dd2eg.backend.users;
 
-import com.dd2eg.backend.users.dto.EnterpriseStatsDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -51,6 +51,7 @@ public class UserController {
         return userService.getUserByEmail(email).orElseThrow(null);
     }
 
+    //TODO split in two different endpoints
     @Operation(
             summary = "Get enterprise dashboard",
             description = "Returns dashboard statistics for the authenticated enterprise user"
@@ -58,10 +59,16 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "Dashboard data retrieved successfully")
     @ApiResponse(responseCode = "401", description = "Unauthorized")
     @GetMapping("/users/dashboard")
-    public ResponseEntity<EnterpriseStatsDTO> getMyDashboard(@AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<?> getMyDashboard(@AuthenticationPrincipal User currentUser) {
 
-        EnterpriseStatsDTO stats = userService.getDashboardStats(currentUser.getId());
+        if (currentUser.getUserType() == UserType.DEVELOPER) {
+            return ResponseEntity.ok(userService.getDeveloperStats(currentUser.getId()));
+        }
 
-        return ResponseEntity.ok(stats);
+        if (currentUser.getUserType() == UserType.ENTERPRISE) {
+            return ResponseEntity.ok(userService.getEnterpriseDashboardStats(currentUser.getId()));
+        }
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not authorized for the dashboard");
     }
 }

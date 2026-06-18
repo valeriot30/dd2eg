@@ -1,10 +1,17 @@
 package com.dd2eg.backend.users;
 
+import com.dd2eg.backend.neo4j.Neo4jRecommendationRepository;
+import com.dd2eg.backend.neo4j.dto.ProjectRecommendationDTO;
+import com.dd2eg.backend.neo4j.dto.SkillRecommendationDTO;
+import com.dd2eg.backend.projects.Project;
+import com.dd2eg.backend.projects.ProjectMongoRepository;
 import com.dd2eg.backend.tasks.Task;
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventType;
+import com.dd2eg.backend.users.dto.DeveloperStatsDTO;
 import com.dd2eg.backend.users.dto.EnterpriseStatsDTO;
+import com.dd2eg.backend.users.dto.RecentProjectDTO;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.bson.Document;
@@ -23,7 +30,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Service
@@ -36,6 +45,8 @@ public class UserService {
     private final UserMongoRepository userRepository;
     private final EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
+    private final ProjectMongoRepository projectRepo;
+    private final Neo4jRecommendationRepository neo4jRepo;
 
     private User getUserById(String id) {
         return userRepository.findById(id).orElse(null);
@@ -73,6 +84,42 @@ public class UserService {
         eventRepository.save(event);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser).getBody();
+    }
+
+    public DeveloperStatsDTO getDeveloperStats(String userId) {
+
+        DeveloperStatsDTO stats = new DeveloperStatsDTO();
+
+        List<ProjectRecommendationDTO> recs = neo4jRepo.getProjectRecommendations(userId);
+
+        Map<String, ProjectRecommendationDTO> recMap = recs.stream()
+                .collect(Collectors.toMap(ProjectRecommendationDTO::getRecommendedProjectId, r -> r));
+
+        List<Project> enrichedProjects = projectRepo.findAllById(recMap.keySet());
+
+        List<RecentProjectDTO> dashboardProjects = enrichedProjects.stream()
+                .map(p -> {
+                    ProjectRecommendationDTO rec = recMap.get(p.getId());
+                    return new RecentProjectDTO(
+                            p.getId(),
+                            p.getName(),
+                            p.getContributors().size(),
+                            0
+                    );
+                })
+                .toList();
+
+        stats.setTopContributors(projectRepo.findTopContributors(10));
+
+        List<SkillRecommendationDTO> skillRecs = neo4jRepo.getSkillRecommendations(userId);
+
+        List<SkillRecommendationDTO> personalSkillTrends = skillRecs.stream()
+                .map(s -> new SkillRecommendationDTO(s.getRecommendedSkill(), s.getFrequency()))
+                .collect(Collectors.toList());
+
+        stats.setTrendingSkills(personalSkillTrends);
+
+        return stats;
     }
 
     public EnterpriseStatsDTO getEnterpriseDashboardStats(String enterpriseId) {
@@ -117,7 +164,6 @@ public class UserService {
 
     public EnterpriseStatsDTO getDashboardStats(String enterpriseId) {
 
-        //TODO CHECK IF USER IS ENTERPRISE, OTHERWISE RETURN USER DASHBOARD
         return this.getEnterpriseDashboardStats(enterpriseId);
     }
 

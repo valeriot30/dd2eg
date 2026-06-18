@@ -6,6 +6,7 @@ import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventType;
 import com.dd2eg.backend.users.User;
+import com.dd2eg.backend.users.dto.RecentProjectDTO;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.bson.Document;
@@ -14,7 +15,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.TextCriteria;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 
@@ -28,10 +31,12 @@ public class ProjectService {
     private EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
 
+    private static Integer NUM_LAST_PROJECTS = 10;
+
     /**
      * Retrieve all projects
      * 
-     * @return
+     * @return the list of projects
      */
     public List<Project> getAllProjects() {
         return projectRepository.findAll();
@@ -50,7 +55,6 @@ public class ProjectService {
 
         newProject.setCreatedAt(java.time.Instant.now().toString());
         newProject.setUpdatedAt(java.time.Instant.now().toString());
-
         newProject.setName(project.getName());
         newProject.setDescription(project.getDescription());
         newProject.setTags(project.getTags());
@@ -82,7 +86,7 @@ public class ProjectService {
      * 
      * @param projectId
      * @param currentUser
-     * @return
+     * @return the project joined
      */
     @Transactional
     public Project addContributorToProject(String projectId, User currentUser) {
@@ -112,6 +116,21 @@ public class ProjectService {
 
         eventRepository.save(event);
 
+        RecentProjectDTO recentProject = new RecentProjectDTO(
+                project.getId(),
+                project.getName(),
+                project.getContributors().size(),
+                project.getBudget() != null ? project.getBudget() : 0
+        );
+
+        Query userQuery = new Query(Criteria.where("id").is(currentUser.getId()));
+        Update userUpdate = new Update().push("lastProjects")
+                .atPosition(0)
+                .slice(NUM_LAST_PROJECTS)
+                        .each(recentProject);
+
+        mongoTemplate.updateFirst(userQuery, userUpdate, User.class);
+
         return projectRepository.save(project);
     }
 
@@ -135,8 +154,26 @@ public class ProjectService {
 
         project.getContributors().remove(username);
 
+        Event event = new Event();
+        event.setType(EventType.REMOVE_CONTRIBUTOR_FROM_PROJECT);
+
+        Document document = new Document();
+        document.put("projectId", project.getId());
+        document.put("contributorId", currentUser.getId());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
+
+        Query userQuery = new Query(Criteria.where("id").is(currentUser.getId()));
+
+        Update userUpdate = new Update().pull("lastProjects", new Document("projectId", projectId));
+
+        mongoTemplate.updateFirst(userQuery, userUpdate, User.class);
+
         return projectRepository.save(project);
     }
+
+
 
     /**
      * Search projects by name using MongoDB Text Search
@@ -195,4 +232,6 @@ public class ProjectService {
 
         return projectRepository.findByTagsIn(tags);
     }
+
+
 }

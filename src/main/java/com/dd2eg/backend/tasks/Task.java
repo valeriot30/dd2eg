@@ -1,8 +1,7 @@
 package com.dd2eg.backend.tasks;
 
-import com.dd2eg.backend.projects.Project;
-import com.dd2eg.backend.skills.Skill;
 import com.dd2eg.backend.tasks.comments.Comment;
+import com.dd2eg.backend.tasks.commits.Commit;
 import com.dd2eg.backend.users.User;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,6 +27,7 @@ public class Task {
 
     private String body;
 
+    @Indexed(partialFilter = "{ status: 'OPEN' }")
     private TaskStatus status;
 
     private String priority;
@@ -43,6 +43,9 @@ public class Task {
     private List<User> sponsorships;
 
     private List<String> skills;
+
+    //TODO pre-allocation of commits of numMaxCommits
+    private List<Commit> commits;
 
     private List<Comment> comments = new ArrayList<>();
 }
