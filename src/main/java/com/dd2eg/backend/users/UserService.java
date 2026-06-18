@@ -164,7 +164,6 @@ public class UserService {
 
     public EnterpriseStatsDTO getDashboardStats(String enterpriseId) {
 
-        //TODO CHECK IF USER IS ENTERPRISE, OTHERWISE RETURN USER DASHBOARD
         return this.getEnterpriseDashboardStats(enterpriseId);
     }
 

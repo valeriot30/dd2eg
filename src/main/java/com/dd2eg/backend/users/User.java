@@ -33,7 +33,11 @@ public class User implements UserDetails {
 
     private List<Skill> skills;
 
+    //TODO last N projects created
     private List<RecentProjectDTO> lastProjects = new ArrayList<>();
+
+    // TODO update when a commit is done
+    private List<RecentProjectDTO> lastContributions = new ArrayList<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

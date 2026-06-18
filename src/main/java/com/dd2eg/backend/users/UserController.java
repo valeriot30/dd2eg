@@ -51,6 +51,7 @@ public class UserController {
         return userService.getUserByEmail(email).orElseThrow(null);
     }
 
+    //TODO split in two different endpoints
     @Operation(
             summary = "Get enterprise dashboard",
             description = "Returns dashboard statistics for the authenticated enterprise user"

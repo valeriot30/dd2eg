@@ -40,6 +40,6 @@ public class Project {
 
     private Integer scamReports;
 
-    public List<String> contributors = new ArrayList<>(); // only names of contributors
+    public List<String> contributors = new ArrayList<>(); // only id of contributors
 
 }
