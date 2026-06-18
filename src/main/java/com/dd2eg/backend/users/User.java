@@ -1,11 +1,13 @@
 package com.dd2eg.backend.users;
 
-
 import com.dd2eg.backend.skills.Skill;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Sharded;
+import org.springframework.data.mongodb.core.mapping.ShardingStrategy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +18,8 @@ import java.util.Optional;
 
 @Getter
 @Setter
+@Document(collection = "users")
+@Sharded(shardKey = { "_id" }, shardingStrategy = ShardingStrategy.HASH)
 public class User implements UserDetails {
 
     @Id

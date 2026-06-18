@@ -7,12 +7,16 @@ import com.dd2eg.backend.users.User;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Sharded;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Setter
 @Getter
+@Document(collection = "tasks")
+@Sharded(shardKey = { "projectId", "_id" })
 public class Task {
 
     @Id
