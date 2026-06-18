@@ -35,7 +35,7 @@ public class TaskService {
     @Transactional
     public Task fundTask(String taskId, FundTaskRequestDTO request, User enterprise) {
 
-        if(enterprise == null) {
+        if (enterprise == null) {
             throw new RuntimeException("Enterprise is null");
         }
 
@@ -65,7 +65,7 @@ public class TaskService {
 
     public Task addCommentToTask(String taskId, String content, User author) {
 
-        //TODO check if task is open
+        // TODO check if task is open
         // mongodb index for open tasks can be used to speed-up the look-up
 
         Task task = taskRepository.findById(taskId)
@@ -86,6 +86,10 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
+        if (task.getStatus() != TaskStatus.OPEN) {
+            throw new RuntimeException("Cannot add commits to a task that is not OPEN");
+        }
+
         // Create and save commit
         Commit commit = new Commit();
         commit.setHash(request.getHash());
@@ -93,7 +97,7 @@ public class TaskService {
         commit.setNumLines(request.getNumLines());
         commit.setTaskId(taskId);
         commit.setAuthorId(author.getId());
-        
+
         Commit savedCommit = commitRepository.save(commit);
 
         // Calculate and update user rating
@@ -127,6 +131,7 @@ public class TaskService {
 
         task.setPriority(request.getPriority());
         task.setNumMaxCommits(request.getNumMaxCommits());
+        task.setSkills(request.getSkills());
 
         task.setProjectId(project.getId());
 
