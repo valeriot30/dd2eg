@@ -275,12 +275,12 @@ public class Neo4jRecommendationRepository {
         List<CrossEnterpriseAnomalyDTO> anomalies = new ArrayList<>();
         while (result.hasNext()) {
             Record record = result.next();
-            anomalies.add(new CrossEnterpriseAnomalyDTO(
-                    record.get("EnterpriseA").asString(),
-                    record.get("TasksFinancedByA_in_B").asLong(),
-                    record.get("EnterpriseB").asString(),
-                    record.get("TasksFinancedByB_in_A").asLong()
-            ));
+            CrossEnterpriseAnomalyDTO dto = new CrossEnterpriseAnomalyDTO();
+            dto.setEnterpriseA(record.get("EnterpriseA").asString());
+            dto.setTasksFinancedByAInB(record.get("TasksFinancedByA_in_B").asLong());
+            dto.setEnterpriseB(record.get("EnterpriseB").asString());
+            dto.setTasksFinancedByBInA(record.get("TasksFinancedByB_in_A").asLong());
+            anomalies.add(dto);
         }
         return anomalies;
     }
@@ -289,13 +289,13 @@ public class Neo4jRecommendationRepository {
         List<DeveloperEnterpriseAnomalyDTO> anomalies = new ArrayList<>();
         while (result.hasNext()) {
             Record record = result.next();
-            anomalies.add(new DeveloperEnterpriseAnomalyDTO(
-                    record.get("FraudsterDeveloper").asString(),
-                    record.get("ComplicitEnterprise").asString(),
-                    record.get("ShellProject").asString(),
-                    record.get("FakeTasksCompleted").asLong(),
-                    record.get("CompromisedTaskIDs").asList(Value::asString)
-            ));
+            DeveloperEnterpriseAnomalyDTO dto = new DeveloperEnterpriseAnomalyDTO();
+            dto.setFraudsterDeveloperId(record.get("FraudsterDeveloper").asString());
+            dto.setComplicitEnterpriseId(record.get("ComplicitEnterprise").asString());
+            dto.setShellProjectId(record.get("ShellProject").asString());
+            dto.setFakeTasksCompleted(record.get("FakeTasksCompleted").asLong());
+            dto.setCompromisedTaskIds(record.get("CompromisedTaskIDs").asList(Value::asString));
+            anomalies.add(dto);
         }
         return anomalies;
     }

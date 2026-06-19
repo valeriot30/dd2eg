@@ -1,28 +1,21 @@
 package com.dd2eg.backend.neo4j.dto;
 
+import lombok.Getter;
+import lombok.Setter;
 import java.util.List;
 
 /**
  * Risultato aggregato della Anomaly Detection.
  */
+@Setter
+@Getter
 public class AnomalyScanResultDTO {
-    private final List<CrossEnterpriseAnomalyDTO> crossEnterpriseAnomalies;
-    private final List<DeveloperEnterpriseAnomalyDTO> developerEnterpriseAnomalies;
-
-    public AnomalyScanResultDTO(List<CrossEnterpriseAnomalyDTO> crossEnterpriseAnomalies, List<DeveloperEnterpriseAnomalyDTO> developerEnterpriseAnomalies) {
-        this.crossEnterpriseAnomalies = crossEnterpriseAnomalies;
-        this.developerEnterpriseAnomalies = developerEnterpriseAnomalies;
-    }
-
-    public List<CrossEnterpriseAnomalyDTO> getCrossEnterpriseAnomalies() {
-        return crossEnterpriseAnomalies;
-    }
-
-    public List<DeveloperEnterpriseAnomalyDTO> getDeveloperEnterpriseAnomalies() {
-        return developerEnterpriseAnomalies;
-    }
+    private List<CrossEnterpriseAnomalyDTO> crossEnterpriseAnomalies;
+    private List<DeveloperEnterpriseAnomalyDTO> developerEnterpriseAnomalies;
 
     public int getTotalAnomalies() {
-        return crossEnterpriseAnomalies.size() + developerEnterpriseAnomalies.size();
+        int crossCount = crossEnterpriseAnomalies != null ? crossEnterpriseAnomalies.size() : 0;
+        int devCount = developerEnterpriseAnomalies != null ? developerEnterpriseAnomalies.size() : 0;
+        return crossCount + devCount;
     }
 }
