@@ -16,6 +16,8 @@ import java.util.List;
 @RequestMapping("/api/recommendations")
 public class RecommendationController {
 
+    //TODO ADD SERVICE FOR RECOMMENDATION
+
     private final Neo4jRecommendationRepository neo4jRepo;
 
     public RecommendationController(Neo4jRecommendationRepository neo4jRepo) {

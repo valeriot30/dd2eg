@@ -1,17 +1,21 @@
 package com.dd2eg.backend.tasks;
 
 import com.dd2eg.backend.tasks.comments.Comment;
+import com.dd2eg.backend.tasks.commits.Commit;
 import com.dd2eg.backend.users.User;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Sharded;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Setter
 @Getter
+@Document(collection = "tasks")
+@Sharded(shardKey = { "projectId", "_id" })
 public class Task {
 
     @Id
@@ -39,6 +43,9 @@ public class Task {
     private List<User> sponsorships;
 
     private List<String> skills;
+
+    //TODO pre-allocation of commits of numMaxCommits
+    private List<Commit> commits;
 
     private List<Comment> comments = new ArrayList<>();
 }

@@ -8,6 +8,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Sharded;
+import org.springframework.data.mongodb.core.mapping.ShardingStrategy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +21,8 @@ import java.util.List;
 
 @Getter
 @Setter
+@Document(collection = "users")
+@Sharded(shardKey = { "_id" }, shardingStrategy = ShardingStrategy.HASH)
 public class User implements UserDetails {
 
     @Id
@@ -32,11 +37,16 @@ public class User implements UserDetails {
 
     private UserType userType = UserType.DEVELOPER;
 
+    private Double rating = 0.0;
+
     private List<Skill> skills;
 
     private List<Project> ownedProjects = new ArrayList<>();
 
     private List<RecentProjectDTO> lastProjects = new ArrayList<>();
+
+    // TODO update when a commit is done
+    private List<RecentProjectDTO> lastContributions = new ArrayList<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

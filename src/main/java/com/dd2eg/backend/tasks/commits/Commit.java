@@ -4,9 +4,13 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Sharded;
 
 @Getter
 @Setter
+@Document(collection = "commits")
+@Sharded(shardKey = { "taskId", "_id" })
 public class Commit {
 
     @Id
@@ -26,4 +30,8 @@ public class Commit {
     private String comment;
 
     private Integer numLines;
+
+    private String taskId;
+
+    private String authorId;
 }

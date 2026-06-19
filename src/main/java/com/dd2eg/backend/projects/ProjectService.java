@@ -71,6 +71,7 @@ public class ProjectService {
         Query userQuery = new Query(Criteria.where("id").is(currentUser.getId()));
         Update userUpdate = new Update().addToSet("ownedProjects", savedProject);
         mongoTemplate.updateFirst(userQuery, userUpdate, User.class);
+        newProject.setCreatorId(currentUser.getId());
 
         Event event = new Event();
         event.setType(EventType.ADD_PROJECT);

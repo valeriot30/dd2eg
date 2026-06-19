@@ -3,6 +3,8 @@ package com.dd2eg.backend.tasks.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Setter
 @Getter
 public class CreateTaskDTO {
@@ -15,4 +17,6 @@ public class CreateTaskDTO {
     private Integer numMaxCommits;
 
     private String projectId;
+
+    private List<String> skills;
 }

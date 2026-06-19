@@ -1,5 +1,7 @@
 package com.dd2eg.backend.tasks;
 
+import com.dd2eg.backend.tasks.commits.Commit;
+import com.dd2eg.backend.tasks.dto.CreateCommitDTO;
 import com.dd2eg.backend.tasks.dto.CreateCommentDTO;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
@@ -70,7 +72,7 @@ public class TaskController {
 
     @Operation(
             summary = "Add commit to task",
-            description = "Adds a commit to a task and registers the authenticated user as project contributor"
+            description = "Adds a commit to a specific task and updates user rating"
     )
     @ApiResponse(responseCode = "200", description = "Commit added successfully")
     @ApiResponse(responseCode = "400", description = "Invalid task or commit data")
@@ -78,15 +80,12 @@ public class TaskController {
     @PostMapping("/{taskId}/commits/add")
     public ResponseEntity<?> addCommit(
             @PathVariable String taskId,
-            @RequestBody Commit commit,
+            @Valid @RequestBody CreateCommitDTO dto,
             @AuthenticationPrincipal User currentUser) {
         try {
-            Commit savedCommit = taskService.addCommitToTask(taskId, commit, currentUser);
-
-            return ResponseEntity.ok(savedCommit);
-
+            Commit commit = taskService.addCommitToTask(taskId, dto, currentUser);
+            return ResponseEntity.ok(commit);
         } catch (RuntimeException e) {
-
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -110,6 +109,25 @@ public class TaskController {
     @PostMapping("/add")
     public Task createTask(@RequestBody CreateTaskDTO request) {
         return taskService.createTask(request);
+    }
+
+    @Operation(
+            summary = "Accept a task",
+            description = "Allows the project creator to accept a pending task and move it to OPEN status"
+    )
+    @ApiResponse(responseCode = "200", description = "Task accepted successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request or business rule violation")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PutMapping("/{taskId}/accept")
+    public ResponseEntity<?> acceptTask(
+            @PathVariable String taskId,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            Task updatedTask = taskService.acceptTask(taskId, currentUser);
+            return ResponseEntity.ok(updatedTask);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
 }

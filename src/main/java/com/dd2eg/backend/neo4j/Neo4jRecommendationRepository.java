@@ -99,6 +99,7 @@ public class Neo4jRecommendationRepository {
             LIMIT 10
             """;
 
+    //TODO this is wrong
     /**
      * Query 5 — Anomaly Detection Batch (Fraud/Escrow Loop Prevention).
      * Identifica cicli sospetti: Enterprise finanzia task → Dev ci lavora →
@@ -116,6 +117,8 @@ public class Neo4jRecommendationRepository {
             ORDER BY CycleFrequency DESC
             """;
 
+
+    //TODO THIS IS WRONG
     /**
      * Query 5 (single enterprise) — Anomaly detection filtered by a specific Enterprise.
      * Triggered after a FUNDING event is synced to Neo4j.
