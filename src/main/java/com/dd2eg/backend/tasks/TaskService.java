@@ -94,7 +94,7 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    public Commit addCommitToTask(String taskId, Commit commit, User currentUser) {
+    public Commit addCommitToTask(String taskId, CreateCommitDTO dto, User currentUser) {
         if (currentUser == null) {
             throw new RuntimeException("Authenticated user is required to commit on a task");
         }
@@ -106,14 +106,22 @@ public class TaskService {
             throw new RuntimeException("Task does not belong to a project");
         }
 
+        int index = task.getCurrentIndex();
+        if (index >= task.getNumMaxCommits()) {
+            throw new RuntimeException("Max commits reached for this task");
+        }
+
+        Commit commit = task.getCommits().get(index);
+        commit.setHash(dto.getHash());
+        commit.setComment(dto.getComment());
+        commit.setNumLines(dto.getNumLines());
+
         commit.setTaskId(task.getId());
         commit.setProjectId(task.getProjectId());
         commit.setAuthorId(currentUser.getId());
         commit.setAuthorUsername(currentUser.getUsername());
 
         task.getCommits().set(index, commit);
-
-        task.setCurrentIndex(index + 1);
 
         Commit savedCommit = commitRepository.save(commit);
 

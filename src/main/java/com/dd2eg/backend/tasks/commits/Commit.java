@@ -30,8 +30,4 @@ public class Commit {
     private String comment;
 
     private Integer numLines;
-
-    private String taskId;
-
-    private String authorId;
 }
