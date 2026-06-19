@@ -2,6 +2,7 @@ package com.dd2eg.backend.tasks;
 
 import com.dd2eg.backend.projects.Project;
 import com.dd2eg.backend.projects.ProjectMongoRepository;
+import com.dd2eg.backend.projects.ProjectService;
 import com.dd2eg.backend.tasks.comments.Comment;
 import com.dd2eg.backend.tasks.commits.Commit;
 import com.dd2eg.backend.tasks.commits.CommitMongoRepository;
@@ -31,6 +32,7 @@ public class TaskService {
     private final UserMongoRepository userRepository;
     private final ProjectMongoRepository projectRepository;
     private final CommitMongoRepository commitRepository;
+    private final ProjectService projectService;
 
     @Transactional
     public Task fundTask(String taskId, FundTaskRequestDTO request, User enterprise) {
@@ -80,35 +82,26 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    @Transactional
-    public Commit addCommitToTask(String taskId, CreateCommitDTO request, User author) {
+    public Commit addCommitToTask(String taskId, Commit commit, User currentUser) {
+        if (currentUser == null) {
+            throw new RuntimeException("Authenticated user is required to commit on a task");
+        }
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        if (task.getStatus() != TaskStatus.OPEN) {
-            throw new RuntimeException("Cannot add commits to a task that is not OPEN");
+        if (task.getProjectId() == null || task.getProjectId().isBlank()) {
+            throw new RuntimeException("Task does not belong to a project");
         }
 
-        // Create and save commit
-        Commit commit = new Commit();
-        commit.setHash(request.getHash());
-        commit.setComment(request.getComment());
-        commit.setNumLines(request.getNumLines());
-        commit.setTaskId(taskId);
-        commit.setAuthorId(author.getId());
+        commit.setTaskId(task.getId());
+        commit.setProjectId(task.getProjectId());
+        commit.setAuthorId(currentUser.getId());
+        commit.setAuthorUsername(currentUser.getUsername());
 
         Commit savedCommit = commitRepository.save(commit);
 
-        // Calculate and update user rating
-        if (task.getNumMaxCommits() != null && task.getNumMaxCommits() > 0) {
-            Double currentRating = author.getRating();
-            if (currentRating == null) {
-                currentRating = 0.0;
-            }
-            author.setRating(Math.min(5.0, currentRating + (1.0 / task.getNumMaxCommits())));
-            userRepository.save(author);
-        }
+        projectService.addContributorToProjectIfMissing(task.getProjectId(), currentUser);
 
         return savedCommit;
     }

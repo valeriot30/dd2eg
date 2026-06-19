@@ -5,6 +5,7 @@ import com.dd2eg.backend.tasks.dto.CreateCommitDTO;
 import com.dd2eg.backend.tasks.dto.CreateCommentDTO;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
+import com.dd2eg.backend.tasks.commits.Commit;
 import com.dd2eg.backend.users.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
