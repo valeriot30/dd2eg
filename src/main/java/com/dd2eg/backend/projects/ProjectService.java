@@ -107,14 +107,15 @@ public class ProjectService {
             throw new RuntimeException("Cannot join a CLOSED project");
         }
 
-        String username = currentUser.getUsername();
-
-        if (project.getContributors().contains(username)) {
+        String userId = currentUser.getId();
+          
+        if (project.getContributors().contains(userId)) {
             addProjectToLastProjectsIfUserIsNotOwner(project, currentUser);
             return project;
         }
 
-        project.getContributors().add(username);
+
+        project.getContributors().add(userId);
 
         Event event = new Event();
         event.setType(EventType.ADD_CONTRIBUTOR_TO_PROJECT);
@@ -163,13 +164,13 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
 
-        String username = currentUser.getUsername();
+        String userId = currentUser.getId();
 
-        if (!project.getContributors().contains(username)) {
+        if (!project.getContributors().contains(userId)) {
             throw new RuntimeException("User is not contributor of this project");
         }
 
-        project.getContributors().remove(username);
+        project.getContributors().remove(userId);
 
         Event event = new Event();
         event.setType(EventType.REMOVE_CONTRIBUTOR_FROM_PROJECT);
