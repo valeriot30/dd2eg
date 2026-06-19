@@ -119,6 +119,16 @@ public class TaskService {
 
         projectService.addContributorToProjectIfMissing(task.getProjectId(), currentUser);
 
+        Event event = new Event();
+        event.setType(EventType.ADD_WORKER_TO_TASK);
+
+        Document document = new Document();
+        document.put("taskId", task.getId());
+        document.put("workerId", currentUser.getId());
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
+
         taskRepository.save(task);
 
         return savedCommit;

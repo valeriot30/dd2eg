@@ -1,7 +1,10 @@
 package com.dd2eg.backend.neo4j.sync;
 
 import com.dd2eg.backend.neo4j.Neo4jRecommendationRepository;
-import com.dd2eg.backend.neo4j.dto.AnomalyDetectionDTO;
+import com.dd2eg.backend.neo4j.AnomalyDetectionService;
+import com.dd2eg.backend.neo4j.dto.AnomalyScanResultDTO;
+import com.dd2eg.backend.neo4j.dto.CrossEnterpriseAnomalyDTO;
+import com.dd2eg.backend.neo4j.dto.DeveloperEnterpriseAnomalyDTO;
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventStatus;
@@ -43,16 +46,16 @@ public class GraphSyncService {
 
     private final EventRepository eventRepository;
     private final Neo4jWriteRepository neo4jWriteRepository;
-    private final Neo4jRecommendationRepository neo4jRecommendationRepository;
+    private final AnomalyDetectionService anomalyDetectionService;
     private final MongoTemplate mongoTemplate;
 
     public GraphSyncService(EventRepository eventRepository,
                             Neo4jWriteRepository neo4jWriteRepository,
-                            Neo4jRecommendationRepository neo4jRecommendationRepository,
+                            AnomalyDetectionService anomalyDetectionService,
                             MongoTemplate mongoTemplate) {
         this.eventRepository = eventRepository;
         this.neo4jWriteRepository = neo4jWriteRepository;
-        this.neo4jRecommendationRepository = neo4jRecommendationRepository;
+        this.anomalyDetectionService = anomalyDetectionService;
         this.mongoTemplate = mongoTemplate;
     }
 
@@ -187,7 +190,7 @@ public class GraphSyncService {
             case ADD_PROJECT -> processAddProject(payload);
             case ADD_TASK -> processAddTask(payload);
             case FUNDING -> processFunding(payload);
-            case ADD_CONTRIBUTOR_TO_PROJECT -> processAddContributor(payload);
+            case ADD_WORKER_TO_TASK -> processAddWorkerToTask(payload);
             default -> throw new RuntimeException("Unknown event type: " + event.getType());
         }
     }
@@ -255,31 +258,46 @@ public class GraphSyncService {
 
         // Step 2: Run anomaly detection for this specific enterprise
         try {
-            List<AnomalyDetectionDTO> anomalies =
-                    neo4jRecommendationRepository.detectAnomaliesForEnterprise(enterpriseId);
+            AnomalyScanResultDTO anomalies = anomalyDetectionService.detectForEnterprise(enterpriseId);
 
-            if (!anomalies.isEmpty()) {
-                log.warn("[AnomalyDetection] Enterprise {} — Found {} suspicious cycles after funding task {}",
-                        enterpriseId, anomalies.size(), taskId);
+            if (anomalies.getTotalAnomalies() > 0) {
+                log.warn("[AnomalyDetection] Enterprise {} — Found {} anomalies after funding task {}",
+                        enterpriseId, anomalies.getTotalAnomalies(), taskId);
 
                 // Step 3: Save alerts to MongoDB
-                for (AnomalyDetectionDTO anomaly : anomalies) {
-                    Document alert = new Document();
-                    alert.put("enterpriseId", anomaly.getEnterpriseId());
-                    alert.put("suspiciousDeveloperId", anomaly.getSuspiciousDeveloperId());
-                    alert.put("cycleFrequency", anomaly.getCycleFrequency());
-                    alert.put("tasksWorked", anomaly.getTasksWorked());
-                    alert.put("financedTasksInTheirProject", anomaly.getFinancedTasksInTheirProject());
-                    alert.put("triggerTaskId", taskId);
-                    alert.put("detectedAt", LocalDateTime.now().toString());
-                    alert.put("resolved", false);
+                if (anomalies.getCrossEnterpriseAnomalies() != null) {
+                    for (CrossEnterpriseAnomalyDTO anomaly : anomalies.getCrossEnterpriseAnomalies()) {
+                        Document alert = new Document();
+                        alert.put("type", "CROSS_ENTERPRISE");
+                        alert.put("enterpriseA", anomaly.getEnterpriseA());
+                        alert.put("enterpriseB", anomaly.getEnterpriseB());
+                        alert.put("tasksFinancedByAInB", anomaly.getTasksFinancedByAInB());
+                        alert.put("tasksFinancedByBInA", anomaly.getTasksFinancedByBInA());
+                        alert.put("triggerTaskId", taskId);
+                        alert.put("detectedAt", LocalDateTime.now().toString());
+                        alert.put("resolved", false);
 
-                    mongoTemplate.save(alert, "anomaly_alerts");
+                        mongoTemplate.save(alert, "anomaly_alerts");
+                        log.warn("[AnomalyDetection]   → Cross-Enterprise match with Enterprise {}", anomaly.getEnterpriseB());
+                    }
+                }
 
-                    log.warn("[AnomalyDetection]   → Suspicious dev: {}, CycleFrequency: {}, Tasks: {}",
-                            anomaly.getSuspiciousDeveloperId(),
-                            anomaly.getCycleFrequency(),
-                            anomaly.getTasksWorked());
+                if (anomalies.getDeveloperEnterpriseAnomalies() != null) {
+                    for (DeveloperEnterpriseAnomalyDTO anomaly : anomalies.getDeveloperEnterpriseAnomalies()) {
+                        Document alert = new Document();
+                        alert.put("type", "DEVELOPER_ENTERPRISE");
+                        alert.put("complicitEnterpriseId", anomaly.getComplicitEnterpriseId());
+                        alert.put("fraudsterDeveloperId", anomaly.getFraudsterDeveloperId());
+                        alert.put("shellProjectId", anomaly.getShellProjectId());
+                        alert.put("fakeTasksCompleted", anomaly.getFakeTasksCompleted());
+                        alert.put("compromisedTaskIds", anomaly.getCompromisedTaskIds());
+                        alert.put("triggerTaskId", taskId);
+                        alert.put("detectedAt", LocalDateTime.now().toString());
+                        alert.put("resolved", false);
+
+                        mongoTemplate.save(alert, "anomaly_alerts");
+                        log.warn("[AnomalyDetection]   → Dev-Enterprise match with Developer {}", anomaly.getFraudsterDeveloperId());
+                    }
                 }
             }
         } catch (Exception e) {
@@ -289,10 +307,10 @@ public class GraphSyncService {
         }
     }
 
-    private void processAddContributor(Document payload) {
-        String projectId = payload.getString("projectId");
-        String contributorId = payload.getString("contributorId");
+    private void processAddWorkerToTask(Document payload) {
+        String taskId = payload.getString("taskId");
+        String workerId = payload.getString("workerId");
 
-        neo4jWriteRepository.addContributorToProject(contributorId, projectId);
+        neo4jWriteRepository.addWorkerToTask(workerId, taskId);
     }
 }

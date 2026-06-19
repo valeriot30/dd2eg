@@ -117,16 +117,6 @@ public class ProjectService {
 
         project.getContributors().add(userId);
 
-        Event event = new Event();
-        event.setType(EventType.ADD_CONTRIBUTOR_TO_PROJECT);
-
-        Document document = new Document();
-        document.put("projectId", project.getId());
-        document.put("contributorId", currentUser.getId());
-        event.setPayload(document.toJson());
-
-        eventRepository.save(event);
-
         Project savedProject = projectRepository.save(project);
         addProjectToLastProjectsIfUserIsNotOwner(savedProject, currentUser);
 

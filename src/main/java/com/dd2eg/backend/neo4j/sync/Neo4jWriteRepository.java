@@ -64,7 +64,7 @@ public class Neo4jWriteRepository {
      * ADD_PROJECT — Creates a Project node with its associated Tags.
      *
      * Resulting graph:
-     * (:Developer {id})-[:CREATED]->(:Project {id, status})
+     * (:Developer|Enterprise {id})-[:CREATED]->(:Project {id, status})
      * (:Project {id, status})-[:CATEGORIZED_BY]->(:Tag {name})
      */
     public void createProject(String projectId, String creatorId, String status, List<String> tags) {
@@ -74,12 +74,13 @@ public class Neo4jWriteRepository {
                 tx.run("MERGE (p:Project {id: $projectId}) SET p.status = $status",
                         Map.of("projectId", projectId, "status", status));
 
-                // Create the CREATED relationship from the developer
+                // Create the CREATED relationship from the creator (Developer or Enterprise)
                 if (creatorId != null) {
                     tx.run("""
-                            MATCH (d:Developer {id: $creatorId})
+                            MATCH (u {id: $creatorId})
+                            WHERE 'Developer' IN labels(u) OR 'Enterprise' IN labels(u)
                             MATCH (p:Project {id: $projectId})
-                            MERGE (d)-[:CREATED]->(p)
+                            MERGE (u)-[:CREATED]->(p)
                             """,
                             Map.of("creatorId", creatorId, "projectId", projectId));
                 }
@@ -162,24 +163,24 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * ADD_CONTRIBUTOR_TO_PROJECT — Creates a CONTRIBUTED_TO relationship between
-     * Developer and Project.
+     * ADD_WORKER_TO_TASK — Creates a WORK_ON relationship between
+     * Developer and Task.
      *
      * Resulting graph:
-     * (:Developer {id})-[:CONTRIBUTED_TO]->(:Project {id})
+     * (:Developer {id})-[:WORK_ON]->(:Task {id})
      */
-    public void addContributorToProject(String developerId, String projectId) {
+    public void addWorkerToTask(String developerId, String taskId) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
                 tx.run("""
                         MATCH (d:Developer {id: $developerId})
-                        MATCH (p:Project {id: $projectId})
-                        MERGE (d)-[:CONTRIBUTED_TO]->(p)
+                        MATCH (t:Task {id: $taskId})
+                        MERGE (d)-[:WORK_ON]->(t)
                         """,
-                        Map.of("developerId", developerId, "projectId", projectId));
+                        Map.of("developerId", developerId, "taskId", taskId));
                 return null;
             });
         }
-        log.debug("[Neo4jWrite] Created CONTRIBUTED_TO relation: {} -> {}", developerId, projectId);
+        log.debug("[Neo4jWrite] Created WORK_ON relation: {} -> {}", developerId, taskId);
     }
 }

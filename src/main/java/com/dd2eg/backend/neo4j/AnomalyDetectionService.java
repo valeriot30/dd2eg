@@ -1,6 +1,8 @@
 package com.dd2eg.backend.neo4j;
 
-import com.dd2eg.backend.neo4j.dto.AnomalyDetectionDTO;
+import com.dd2eg.backend.neo4j.dto.AnomalyScanResultDTO;
+import com.dd2eg.backend.neo4j.dto.CrossEnterpriseAnomalyDTO;
+import com.dd2eg.backend.neo4j.dto.DeveloperEnterpriseAnomalyDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,19 +35,29 @@ public class AnomalyDetectionService {
      * param enterpriseId the Enterprise to check for suspicious cycles
      * return list of anomalies found
      */
-    public List<AnomalyDetectionDTO> detectForEnterprise(String enterpriseId) {
+    public AnomalyScanResultDTO detectForEnterprise(String enterpriseId) {
         log.info("[AnomalyDetection] Running detection for Enterprise: {}", enterpriseId);
-        return neo4jRepo.detectAnomaliesForEnterprise(enterpriseId);
+        List<CrossEnterpriseAnomalyDTO> crossAnomalies = neo4jRepo.detectCrossEnterpriseAnomaliesForEnterprise(enterpriseId);
+        List<DeveloperEnterpriseAnomalyDTO> devAnomalies = neo4jRepo.detectDeveloperEnterpriseAnomaliesForEnterprise(enterpriseId);
+        AnomalyScanResultDTO result = new AnomalyScanResultDTO();
+        result.setCrossEnterpriseAnomalies(crossAnomalies);
+        result.setDeveloperEnterpriseAnomalies(devAnomalies);
+        return result;
     }
 
     /**
      * Runs anomaly detection for ALL enterprises (batch).
      * Can be triggered by admin for a full scan.
      *
-     * return list of all anomalies found
+     * return all anomalies found
      */
-    public List<AnomalyDetectionDTO> detectAll() {
+    public AnomalyScanResultDTO detectAll() {
         log.info("[AnomalyDetection] Running batch detection for all enterprises...");
-        return neo4jRepo.detectAnomalies();
+        List<CrossEnterpriseAnomalyDTO> crossAnomalies = neo4jRepo.detectCrossEnterpriseAnomalies();
+        List<DeveloperEnterpriseAnomalyDTO> devAnomalies = neo4jRepo.detectDeveloperEnterpriseAnomalies();
+        AnomalyScanResultDTO result = new AnomalyScanResultDTO();
+        result.setCrossEnterpriseAnomalies(crossAnomalies);
+        result.setDeveloperEnterpriseAnomalies(devAnomalies);
+        return result;
     }
 }
