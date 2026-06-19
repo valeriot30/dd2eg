@@ -2,7 +2,10 @@ package com.dd2eg.backend.tasks;
 
 import com.dd2eg.backend.projects.Project;
 import com.dd2eg.backend.projects.ProjectMongoRepository;
+import com.dd2eg.backend.projects.ProjectService;
 import com.dd2eg.backend.tasks.comments.Comment;
+import com.dd2eg.backend.tasks.commits.Commit;
+import com.dd2eg.backend.tasks.commits.CommitMongoRepository;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
 import com.dd2eg.backend.tasks.events.Event;
@@ -27,6 +30,8 @@ public class TaskService {
     private final EventRepository eventRepository;
     private final UserMongoRepository userRepository;
     private final ProjectMongoRepository projectRepository;
+    private final CommitMongoRepository commitRepository;
+    private final ProjectService projectService;
 
     @Transactional
     public Task fundTask(String taskId, FundTaskRequestDTO request, User enterprise) {
@@ -76,6 +81,30 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
+    public Commit addCommitToTask(String taskId, Commit commit, User currentUser) {
+        if (currentUser == null) {
+            throw new RuntimeException("Authenticated user is required to commit on a task");
+        }
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        if (task.getProjectId() == null || task.getProjectId().isBlank()) {
+            throw new RuntimeException("Task does not belong to a project");
+        }
+
+        commit.setTaskId(task.getId());
+        commit.setProjectId(task.getProjectId());
+        commit.setAuthorId(currentUser.getId());
+        commit.setAuthorUsername(currentUser.getUsername());
+
+        Commit savedCommit = commitRepository.save(commit);
+
+        projectService.addContributorToProjectIfMissing(task.getProjectId(), currentUser);
+
+        return savedCommit;
+    }
+
     public List<Task> getTasksByProjectId(String projectId) {
         // get all tasks by project id
         return taskRepository.findByProjectId(projectId);
@@ -108,6 +137,7 @@ public class TaskService {
 
         Document document = new Document();
         document.put("taskId", task.getId());
+        document.put("projectId", task.getProjectId());
         document.put("skills", task.getSkills());
         event.setPayload(document.toJson());
 

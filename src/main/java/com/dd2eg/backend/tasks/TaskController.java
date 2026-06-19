@@ -3,6 +3,7 @@ package com.dd2eg.backend.tasks;
 import com.dd2eg.backend.tasks.dto.CreateCommentDTO;
 import com.dd2eg.backend.tasks.dto.CreateTaskDTO;
 import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
+import com.dd2eg.backend.tasks.commits.Commit;
 import com.dd2eg.backend.users.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -60,6 +61,29 @@ public class TaskController {
             Task updatedTask = taskService.addCommentToTask(taskId, dto.getContent(), currentUser);
 
             return ResponseEntity.ok(updatedTask);
+
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Add commit to task",
+            description = "Adds a commit to a task and registers the authenticated user as project contributor"
+    )
+    @ApiResponse(responseCode = "200", description = "Commit added successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid task or commit data")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PostMapping("/{taskId}/commits/add")
+    public ResponseEntity<?> addCommit(
+            @PathVariable String taskId,
+            @RequestBody Commit commit,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            Commit savedCommit = taskService.addCommitToTask(taskId, commit, currentUser);
+
+            return ResponseEntity.ok(savedCommit);
 
         } catch (RuntimeException e) {
 
