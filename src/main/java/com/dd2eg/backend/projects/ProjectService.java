@@ -50,12 +50,17 @@ public class ProjectService {
      */
     @Transactional
     public Project createProject(CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            throw new RuntimeException("Authenticated user is required to create a project");
+        }
 
         Project newProject = new Project();
 
         newProject.setCreatedAt(java.time.Instant.now().toString());
         newProject.setUpdatedAt(java.time.Instant.now().toString());
         newProject.setName(project.getName());
+        newProject.setCreatorId(currentUser.getId());
+        newProject.setCreatorName(currentUser.getUsername());
         newProject.setDescription(project.getDescription());
         newProject.setTags(project.getTags());
 
@@ -63,22 +68,26 @@ public class ProjectService {
             newProject.setStatus(ProjectStatus.OPEN);
         }
 
+        Project savedProject = projectRepository.save(newProject);
+
+        Query userQuery = new Query(Criteria.where("id").is(currentUser.getId()));
+        Update userUpdate = new Update().addToSet("ownedProjects", savedProject);
+        mongoTemplate.updateFirst(userQuery, userUpdate, User.class);
         newProject.setCreatorId(currentUser.getId());
 
         Event event = new Event();
-        event.setType(EventType.ADD_TASK);
+        event.setType(EventType.ADD_PROJECT);
 
         Document document = new Document();
-        document.put("projectId", newProject.getId());
-        document.put("status", newProject.getStatus().name());
+        document.put("projectId", savedProject.getId());
+        document.put("creatorId", currentUser.getId());
+        document.put("status", savedProject.getStatus().name());
         document.put("tags", project.getTags());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
 
-        projectRepository.save(newProject);
-
-        return newProject;
+        return savedProject;
     }
 
     /**
@@ -89,7 +98,7 @@ public class ProjectService {
      * @return the project joined
      */
     @Transactional
-    public Project addContributorToProject(String projectId, User currentUser) {
+    public Project addContributorToProjectIfMissing(String projectId, User currentUser) {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
@@ -99,10 +108,12 @@ public class ProjectService {
         }
 
         String userId = currentUser.getId();
-
+          
         if (project.getContributors().contains(userId)) {
-            throw new RuntimeException("User is already a contributor");
+            addProjectToLastProjectsIfUserIsNotOwner(project, currentUser);
+            return project;
         }
+
 
         project.getContributors().add(userId);
 
@@ -116,6 +127,13 @@ public class ProjectService {
 
         eventRepository.save(event);
 
+        Project savedProject = projectRepository.save(project);
+        addProjectToLastProjectsIfUserIsNotOwner(savedProject, currentUser);
+
+        return savedProject;
+    }
+
+    private void addProjectToLastProjectsIfUserIsNotOwner(Project project, User currentUser) {
         RecentProjectDTO recentProject = new RecentProjectDTO(
                 project.getId(),
                 project.getName(),
@@ -123,15 +141,15 @@ public class ProjectService {
                 project.getBudget() != null ? project.getBudget() : 0
         );
 
-        Query userQuery = new Query(Criteria.where("id").is(currentUser.getId()));
+        Query userQuery = new Query(Criteria.where("id").is(currentUser.getId())
+                .and("ownedProjects").not().elemMatch(Criteria.where("_id").is(project.getId()))
+                .and("lastProjects").not().elemMatch(Criteria.where("projectId").is(project.getId())));
         Update userUpdate = new Update().push("lastProjects")
                 .atPosition(0)
                 .slice(NUM_LAST_PROJECTS)
                         .each(recentProject);
 
         mongoTemplate.updateFirst(userQuery, userUpdate, User.class);
-
-        return projectRepository.save(project);
     }
 
     /**

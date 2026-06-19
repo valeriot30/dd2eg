@@ -51,24 +51,37 @@ public class UserController {
         return userService.getUserByEmail(email).orElseThrow(null);
     }
 
-    //TODO split in two different endpoints
     @Operation(
-            summary = "Get enterprise dashboard",
-            description = "Returns dashboard statistics for the authenticated enterprise user"
+            summary = "Get developer dashboard",
+            description = "Returns dashboard statistics for the authenticated developer"
     )
     @ApiResponse(responseCode = "200", description = "Dashboard data retrieved successfully")
     @ApiResponse(responseCode = "401", description = "Unauthorized")
-    @GetMapping("/users/dashboard")
-    public ResponseEntity<?> getMyDashboard(@AuthenticationPrincipal User currentUser) {
-
-        if (currentUser.getUserType() == UserType.DEVELOPER) {
-            return ResponseEntity.ok(userService.getDeveloperStats(currentUser.getId()));
+    @ApiResponse(responseCode = "403", description = "Forbidden - User is not a developer")
+    @GetMapping("/users/dashboard/developer")
+    public ResponseEntity<?> getDeveloperDashboard(@AuthenticationPrincipal User currentUser) {
+        if (currentUser.getUserType() != UserType.DEVELOPER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Not authorized: This dashboard is for developers only");
         }
 
-        if (currentUser.getUserType() == UserType.ENTERPRISE) {
-            return ResponseEntity.ok(userService.getEnterpriseDashboardStats(currentUser.getId()));
+        return ResponseEntity.ok(userService.getDeveloperStats(currentUser.getId()));
+    }
+
+    @Operation(
+            summary = "Get enterprise dashboard",
+            description = "Returns dashboard statistics for the authenticated enterprise"
+    )
+    @ApiResponse(responseCode = "200", description = "Dashboard data retrieved successfully")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @ApiResponse(responseCode = "403", description = "Forbidden - User is not an enterprise")
+    @GetMapping("/users/dashboard/enterprise")
+    public ResponseEntity<?> getEnterpriseDashboard(@AuthenticationPrincipal User currentUser) {
+        if (currentUser.getUserType() != UserType.ENTERPRISE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Not authorized: This dashboard is for enterprises only");
         }
 
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not authorized for the dashboard");
+        return ResponseEntity.ok(userService.getEnterpriseDashboardStats(currentUser.getId()));
     }
 }

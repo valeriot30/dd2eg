@@ -1,5 +1,7 @@
 package com.dd2eg.backend.users;
 
+
+import com.dd2eg.backend.projects.Project;
 import com.dd2eg.backend.skills.Skill;
 import com.dd2eg.backend.users.dto.RecentProjectDTO;
 import lombok.Getter;
@@ -39,7 +41,8 @@ public class User implements UserDetails {
 
     private List<Skill> skills;
 
-    //TODO last N projects created
+    private List<Project> ownedProjects = new ArrayList<>();
+
     private List<RecentProjectDTO> lastProjects = new ArrayList<>();
 
     // TODO update when a commit is done

@@ -1,7 +1,10 @@
 package com.dd2eg.backend.neo4j;
 
 import com.dd2eg.backend.neo4j.dto.*;
+import com.dd2eg.backend.users.User;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,59 +16,52 @@ import java.util.List;
  * schedulato.
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/recommendations")
 public class RecommendationController {
 
-    //TODO ADD SERVICE FOR RECOMMENDATION
-
-    private final Neo4jRecommendationRepository neo4jRepo;
-
-    public RecommendationController(Neo4jRecommendationRepository neo4jRepo) {
-        this.neo4jRepo = neo4jRepo;
-    }
+    private final RecommendationService recommendationService;
 
     /**
-     * Q1 — Progetti raccomandati per un Developer.
-     * GET /api/recommendations/projects?devId=xxx
+     * Q1 — Progetti raccomandati per il Developer loggato.
+     * GET /api/recommendations/projects
      */
     @GetMapping("/projects")
     public ResponseEntity<List<ProjectRecommendationDTO>> getProjectRecommendations(
-            @RequestParam String devId) {
-        List<ProjectRecommendationDTO> results = neo4jRepo.getProjectRecommendations(devId);
-        return ResponseEntity.ok(results);
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(recommendationService.getProjectRecommendations(currentUser.getId()));
     }
 
     /**
-     * Q2 — Skill raccomandate per un Developer.
-     * GET /api/recommendations/skills?devId=xxx
+     * Q2 — Skill raccomandate per il Developer loggato.
+     * GET /api/recommendations/skills
      */
     @GetMapping("/skills")
     public ResponseEntity<List<SkillRecommendationDTO>> getSkillRecommendations(
-            @RequestParam String devId) {
-        List<SkillRecommendationDTO> results = neo4jRepo.getSkillRecommendations(devId);
-        return ResponseEntity.ok(results);
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(recommendationService.getSkillRecommendations(currentUser.getId()));
     }
 
     /**
-     * Q3 — Ranking dei task ottimali in un progetto per un Developer.
-     * GET /api/recommendations/tasks?projId=xxx&devId=yyy
+     * Q3 — Ranking dei task ottimali in un progetto per il Developer loggato.
+     * GET /api/recommendations/tasks?projId=xxx
      */
     @GetMapping("/tasks")
     public ResponseEntity<List<TaskRankingDTO>> getTaskRanking(
             @RequestParam String projId,
-            @RequestParam String devId) {
-        List<TaskRankingDTO> results = neo4jRepo.getTaskRanking(projId, devId);
-        return ResponseEntity.ok(results);
+            @AuthenticationPrincipal User currentUser) {
+        // projId rimane come RequestParam perché specifica di quale progetto stiamo chiedendo il ranking,
+        // mentre devId viene estratto in modo sicuro dal token.
+        return ResponseEntity.ok(recommendationService.getTaskRanking(projId, currentUser.getId()));
     }
 
     /**
-     * Q4 — Progetti raccomandati per il finanziamento da parte di un'Enterprise.
-     * GET /api/recommendations/financing?entId=xxx
+     * Q4 — Progetti raccomandati per il finanziamento da parte dell'Enterprise loggata.
+     * GET /api/recommendations/financing
      */
     @GetMapping("/financing")
     public ResponseEntity<List<FinancingRecommendationDTO>> getFinancingRecommendations(
-            @RequestParam String entId) {
-        List<FinancingRecommendationDTO> results = neo4jRepo.getFinancingRecommendations(entId);
-        return ResponseEntity.ok(results);
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(recommendationService.getFinancingRecommendations(currentUser.getId()));
     }
 }

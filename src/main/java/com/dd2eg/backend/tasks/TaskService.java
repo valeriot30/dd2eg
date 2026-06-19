@@ -2,6 +2,7 @@ package com.dd2eg.backend.tasks;
 
 import com.dd2eg.backend.projects.Project;
 import com.dd2eg.backend.projects.ProjectMongoRepository;
+import com.dd2eg.backend.projects.ProjectService;
 import com.dd2eg.backend.tasks.comments.Comment;
 import com.dd2eg.backend.tasks.commits.Commit;
 import com.dd2eg.backend.tasks.commits.CommitMongoRepository;
@@ -11,12 +12,12 @@ import com.dd2eg.backend.tasks.dto.FundTaskRequestDTO;
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventType;
+import com.dd2eg.backend.tasks.sponsorship.SponsorshipDTO;
 import com.dd2eg.backend.users.User;
 import com.dd2eg.backend.users.UserMongoRepository;
 import com.dd2eg.backend.users.UserType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.apache.coyote.BadRequestException;
 import org.bson.Document;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +32,7 @@ public class TaskService {
     private final UserMongoRepository userRepository;
     private final ProjectMongoRepository projectRepository;
     private final CommitMongoRepository commitRepository;
+    private final ProjectService projectService;
 
     @Transactional
     public Task fundTask(String taskId, FundTaskRequestDTO request, User enterprise) {
@@ -49,6 +51,18 @@ public class TaskService {
         if (task.getSponsorships() == null) {
             task.setSponsorships(new ArrayList<>());
         }
+
+        int amountToFund = request.getAmount();
+        if (amountToFund <= 0) {
+            throw new IllegalArgumentException("Funding amount must be greater than zero");
+        }
+
+        SponsorshipDTO sponsorship = new SponsorshipDTO();
+        sponsorship.setEnterpriseId(enterprise.getId());
+        sponsorship.setName(enterprise.getUsername());
+        sponsorship.setAmount(amountToFund);
+
+        task.getSponsorships().add(sponsorship);
 
         Event event = new Event();
         event.setType(EventType.FUNDING);
@@ -80,35 +94,32 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    @Transactional
-    public Commit addCommitToTask(String taskId, CreateCommitDTO request, User author) {
+    public Commit addCommitToTask(String taskId, Commit commit, User currentUser) {
+        if (currentUser == null) {
+            throw new RuntimeException("Authenticated user is required to commit on a task");
+        }
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        if (task.getStatus() != TaskStatus.OPEN) {
-            throw new RuntimeException("Cannot add commits to a task that is not OPEN");
+        if (task.getProjectId() == null || task.getProjectId().isBlank()) {
+            throw new RuntimeException("Task does not belong to a project");
         }
 
-        // Create and save commit
-        Commit commit = new Commit();
-        commit.setHash(request.getHash());
-        commit.setComment(request.getComment());
-        commit.setNumLines(request.getNumLines());
-        commit.setTaskId(taskId);
-        commit.setAuthorId(author.getId());
+        commit.setTaskId(task.getId());
+        commit.setProjectId(task.getProjectId());
+        commit.setAuthorId(currentUser.getId());
+        commit.setAuthorUsername(currentUser.getUsername());
+
+        task.getCommits().set(index, commit);
+
+        task.setCurrentIndex(index + 1);
 
         Commit savedCommit = commitRepository.save(commit);
 
-        // Calculate and update user rating
-        if (task.getNumMaxCommits() != null && task.getNumMaxCommits() > 0) {
-            Double currentRating = author.getRating();
-            if (currentRating == null) {
-                currentRating = 0.0;
-            }
-            author.setRating(Math.min(5.0, currentRating + (1.0 / task.getNumMaxCommits())));
-            userRepository.save(author);
-        }
+        projectService.addContributorToProjectIfMissing(task.getProjectId(), currentUser);
+
+        taskRepository.save(task);
 
         return savedCommit;
     }
@@ -124,7 +135,7 @@ public class TaskService {
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        Task task = new Task();
+        Task task = new Task(request.getNumMaxCommits());
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setBody(request.getBody());
@@ -135,13 +146,10 @@ public class TaskService {
 
         task.setProjectId(project.getId());
 
-        task.setStatus(TaskStatus.PENDING);
+        //TODO CHANGE THIS TO PENDING
+        task.setStatus(TaskStatus.OPEN);
 
-        task.setSponsorships(new ArrayList<>());
-
-        Task saved = taskRepository.save(task);
-
-        return saved;
+        return taskRepository.save(task);
     }
 
     @Transactional

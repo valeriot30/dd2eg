@@ -42,23 +42,6 @@ public class ProjectController {
         return projectService.createProject(project, currentUser);
     }
 
-    @Operation(
-            summary = "Join a project",
-            description = "Adds the authenticated user as a contributor to the project"
-    )
-    @PostMapping("/{projectId}/join")
-    public ResponseEntity<?> joinProject(
-            @PathVariable String projectId,
-            @AuthenticationPrincipal User currentUser) {
-
-        try {
-            Project updatedProject = projectService.addContributorToProject(projectId, currentUser);
-            return ResponseEntity.ok(updatedProject);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
     @PostMapping("/{projectId}/leave")
     @Operation(
             summary = "Leave a project",
