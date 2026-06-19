@@ -45,6 +45,6 @@ public class Project {
 
     private String creatorId;
 
-    public List<String> contributors = new ArrayList<>(); // only names of contributors
+    public List<String> contributors = new ArrayList<>(); // only ids of contributors
 
 }
