@@ -59,6 +59,8 @@ public class ProjectService {
         newProject.setCreatedAt(java.time.Instant.now().toString());
         newProject.setUpdatedAt(java.time.Instant.now().toString());
         newProject.setName(project.getName());
+        newProject.setCreatorId(currentUser.getId());
+        newProject.setCreatorName(currentUser.getUsername());
         newProject.setDescription(project.getDescription());
         newProject.setTags(project.getTags());
 

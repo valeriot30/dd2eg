@@ -16,7 +16,7 @@ public class Commit {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed(unique = true, sparse = true)
     private String hash;
 
     private String taskId;
