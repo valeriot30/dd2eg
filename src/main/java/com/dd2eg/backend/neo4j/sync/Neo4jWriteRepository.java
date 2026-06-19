@@ -64,7 +64,7 @@ public class Neo4jWriteRepository {
      * ADD_PROJECT — Creates a Project node with its associated Tags.
      *
      * Resulting graph:
-     * (:Developer {id})-[:CREATED]->(:Project {id, status})
+     * (:Developer|Enterprise {id})-[:CREATED]->(:Project {id, status})
      * (:Project {id, status})-[:CATEGORIZED_BY]->(:Tag {name})
      */
     public void createProject(String projectId, String creatorId, String status, List<String> tags) {
@@ -74,12 +74,13 @@ public class Neo4jWriteRepository {
                 tx.run("MERGE (p:Project {id: $projectId}) SET p.status = $status",
                         Map.of("projectId", projectId, "status", status));
 
-                // Create the CREATED relationship from the developer
+                // Create the CREATED relationship from the creator (Developer or Enterprise)
                 if (creatorId != null) {
                     tx.run("""
-                            MATCH (d:Developer {id: $creatorId})
+                            MATCH (u {id: $creatorId})
+                            WHERE 'Developer' IN labels(u) OR 'Enterprise' IN labels(u)
                             MATCH (p:Project {id: $projectId})
-                            MERGE (d)-[:CREATED]->(p)
+                            MERGE (u)-[:CREATED]->(p)
                             """,
                             Map.of("creatorId", creatorId, "projectId", projectId));
                 }
