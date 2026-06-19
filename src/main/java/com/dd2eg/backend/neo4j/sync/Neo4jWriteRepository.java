@@ -162,24 +162,24 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * ADD_CONTRIBUTOR_TO_PROJECT — Creates a CONTRIBUTED_TO relationship between
-     * Developer and Project.
+     * ADD_WORKER_TO_TASK — Creates a WORK_ON relationship between
+     * Developer and Task.
      *
      * Resulting graph:
-     * (:Developer {id})-[:CONTRIBUTED_TO]->(:Project {id})
+     * (:Developer {id})-[:WORK_ON]->(:Task {id})
      */
-    public void addContributorToProject(String developerId, String projectId) {
+    public void addWorkerToTask(String developerId, String taskId) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
                 tx.run("""
                         MATCH (d:Developer {id: $developerId})
-                        MATCH (p:Project {id: $projectId})
-                        MERGE (d)-[:CONTRIBUTED_TO]->(p)
+                        MATCH (t:Task {id: $taskId})
+                        MERGE (d)-[:WORK_ON]->(t)
                         """,
-                        Map.of("developerId", developerId, "projectId", projectId));
+                        Map.of("developerId", developerId, "taskId", taskId));
                 return null;
             });
         }
-        log.debug("[Neo4jWrite] Created CONTRIBUTED_TO relation: {} -> {}", developerId, projectId);
+        log.debug("[Neo4jWrite] Created WORK_ON relation: {} -> {}", developerId, taskId);
     }
 }

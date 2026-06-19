@@ -190,7 +190,7 @@ public class GraphSyncService {
             case ADD_PROJECT -> processAddProject(payload);
             case ADD_TASK -> processAddTask(payload);
             case FUNDING -> processFunding(payload);
-            case ADD_CONTRIBUTOR_TO_PROJECT -> processAddContributor(payload);
+            case ADD_WORKER_TO_TASK -> processAddWorkerToTask(payload);
             default -> throw new RuntimeException("Unknown event type: " + event.getType());
         }
     }
@@ -307,10 +307,10 @@ public class GraphSyncService {
         }
     }
 
-    private void processAddContributor(Document payload) {
-        String projectId = payload.getString("projectId");
-        String contributorId = payload.getString("contributorId");
+    private void processAddWorkerToTask(Document payload) {
+        String taskId = payload.getString("taskId");
+        String workerId = payload.getString("workerId");
 
-        neo4jWriteRepository.addContributorToProject(contributorId, projectId);
+        neo4jWriteRepository.addWorkerToTask(workerId, taskId);
     }
 }
