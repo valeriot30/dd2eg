@@ -1,6 +1,6 @@
 package com.dd2eg.backend.neo4j;
 
-import com.dd2eg.backend.neo4j.dto.AnomalyDetectionDTO;
+import com.dd2eg.backend.neo4j.dto.AnomalyScanResultDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,11 +37,11 @@ public class AdminAnomalyController {
     @ApiResponse(responseCode = "200", description = "Scan completed")
     @GetMapping("/scan-all")
     public ResponseEntity<Map<String, Object>> scanAll() {
-        List<AnomalyDetectionDTO> anomalies = anomalyDetectionService.detectAll();
+        AnomalyScanResultDTO anomalies = anomalyDetectionService.detectAll();
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Batch scan completed");
-        response.put("anomaliesFound", anomalies.size());
+        response.put("anomaliesFound", anomalies.getTotalAnomalies());
         response.put("data", anomalies);
 
         return ResponseEntity.ok(response);
@@ -58,12 +58,12 @@ public class AdminAnomalyController {
     @ApiResponse(responseCode = "200", description = "Scan completed")
     @GetMapping("/scan/{enterpriseId}")
     public ResponseEntity<Map<String, Object>> scanForEnterprise(@PathVariable String enterpriseId) {
-        List<AnomalyDetectionDTO> anomalies = anomalyDetectionService.detectForEnterprise(enterpriseId);
+        AnomalyScanResultDTO anomalies = anomalyDetectionService.detectForEnterprise(enterpriseId);
 
         Map<String, Object> response = new HashMap<>();
         response.put("enterpriseId", enterpriseId);
         response.put("message", "Targeted scan completed");
-        response.put("anomaliesFound", anomalies.size());
+        response.put("anomaliesFound", anomalies.getTotalAnomalies());
         response.put("data", anomalies);
 
         return ResponseEntity.ok(response);

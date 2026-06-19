@@ -99,39 +99,58 @@ public class Neo4jRecommendationRepository {
             LIMIT 10
             """;
 
-    //TODO this is wrong
-    /**
-     * Query 5 — Anomaly Detection Batch (Fraud/Escrow Loop Prevention).
-     * Identifica cicli sospetti: Enterprise finanzia task → Dev ci lavora →
-     * Dev ha creato un progetto → quel progetto ha task finanziati dalla stessa
-     * Enterprise.
-     */
-    private static final String ANOMALY_DETECTION_BATCH_QUERY = """
-            MATCH path = ((ent:Enterprise)-[:FINANCED]->(t1:Task)<-[:WORK_ON]-(dev:Developer)-[:CREATED]->(proj:Project)<-[:BELONGS_TO]-(t2:Task)<-[:FINANCED]-(ent))
-            WHERE t1 <> t2
-            RETURN ent.id AS EnterpriseId,
-                   dev.id AS SuspiciousDeveloper,
-                   count(path) AS CycleFrequency,
-                   collect(DISTINCT t1.id) AS TasksWorked,
-                   collect(DISTINCT t2.id) AS FinancedTasksInTheirProject
-            ORDER BY CycleFrequency DESC
+    // --- NUOVE QUERY ANOMALY DETECTION ---
+
+    private static final String ANOMALY_DETECTION_CROSS_ENTERPRISE_QUERY = """
+            MATCH (e1:Enterprise)-[:FINANCED]->(t1:Task)-[:BELONGS_TO]->(p1:Project)<-[:CREATED]-(e2:Enterprise)
+            MATCH (e2)-[:FINANCED]->(t2:Task)-[:BELONGS_TO]->(p2:Project)<-[:CREATED]-(e1)
+            WHERE e1.id < e2.id
+            RETURN e1.id AS EnterpriseA,
+                   count(DISTINCT t1) AS TasksFinancedByA_in_B,
+                   e2.id AS EnterpriseB,
+                   count(DISTINCT t2) AS TasksFinancedByB_in_A
+            ORDER BY TasksFinancedByA_in_B + TasksFinancedByB_in_A DESC;
             """;
 
+    private static final String ANOMALY_DETECTION_CROSS_ENTERPRISE_SINGLE_QUERY = """
+            MATCH (e1:Enterprise {id: $entId})-[:FINANCED]->(t1:Task)-[:BELONGS_TO]->(p1:Project)<-[:CREATED]-(e2:Enterprise)
+            MATCH (e2)-[:FINANCED]->(t2:Task)-[:BELONGS_TO]->(p2:Project)<-[:CREATED]-(e1)
+            WHERE e1 <> e2
+            RETURN e1.id AS EnterpriseA,
+                   count(DISTINCT t1) AS TasksFinancedByA_in_B,
+                   e2.id AS EnterpriseB,
+                   count(DISTINCT t2) AS TasksFinancedByB_in_A
+            ORDER BY TasksFinancedByA_in_B + TasksFinancedByB_in_A DESC;
+            """;
 
-    //TODO THIS IS WRONG
-    /**
-     * Query 5 (single enterprise) — Anomaly detection filtered by a specific Enterprise.
-     * Triggered after a FUNDING event is synced to Neo4j.
-     */
-    private static final String ANOMALY_DETECTION_SINGLE_QUERY = """
-            MATCH path = ((ent:Enterprise {id: $entId})-[:FINANCED]->(t1:Task)<-[:WORK_ON]-(dev:Developer)-[:CREATED]->(proj:Project)<-[:BELONGS_TO]-(t2:Task)<-[:FINANCED]-(ent))
-            WHERE t1 <> t2
-            RETURN ent.id AS EnterpriseId,
-                   dev.id AS SuspiciousDeveloper,
-                   count(path) AS CycleFrequency,
-                   collect(DISTINCT t1.id) AS TasksWorked,
-                   collect(DISTINCT t2.id) AS FinancedTasksInTheirProject
-            ORDER BY CycleFrequency DESC
+    private static final String ANOMALY_DETECTION_DEVELOPER_ENTERPRISE_QUERY = """
+            MATCH (ent:Enterprise)-[:FINANCED]->(t:Task)<-[:WORK_ON]-(dev:Developer)
+            MATCH (dev)-[:CREATED]->(p:Project)<-[:BELONGS_TO]-(t)
+            WHERE NOT EXISTS {
+                MATCH (otherDev:Developer)-[:WORK_ON]->(:Task)-[:BELONGS_TO]->(p)
+                WHERE otherDev <> dev
+            }
+            RETURN dev.id AS FraudsterDeveloper,
+                   ent.id AS ComplicitEnterprise,
+                   p.id AS ShellProject,
+                   count(DISTINCT t) AS FakeTasksCompleted,
+                   collect(t.id) AS CompromisedTaskIDs
+            ORDER BY FakeTasksCompleted DESC
+            """;
+
+    private static final String ANOMALY_DETECTION_DEVELOPER_ENTERPRISE_SINGLE_QUERY = """
+            MATCH (ent:Enterprise {id: $entId})-[:FINANCED]->(t:Task)<-[:WORK_ON]-(dev:Developer)
+            MATCH (dev)-[:CREATED]->(p:Project)<-[:BELONGS_TO]-(t)
+            WHERE NOT EXISTS {
+                MATCH (otherDev:Developer)-[:WORK_ON]->(:Task)-[:BELONGS_TO]->(p)
+                WHERE otherDev <> dev
+            }
+            RETURN dev.id AS FraudsterDeveloper,
+                   ent.id AS ComplicitEnterprise,
+                   p.id AS ShellProject,
+                   count(DISTINCT t) AS FakeTasksCompleted,
+                   collect(t.id) AS CompromisedTaskIDs
+            ORDER BY FakeTasksCompleted DESC
             """;
 
     public Neo4jRecommendationRepository(Driver driver) {
@@ -216,45 +235,68 @@ public class Neo4jRecommendationRepository {
         }
     }
 
-    // QUERY 5 — Anomaly Detection Batch (Fraud Prevention)
-    public List<AnomalyDetectionDTO> detectAnomalies() {
+    public List<CrossEnterpriseAnomalyDTO> detectCrossEnterpriseAnomalies() {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             return session.executeRead(tx -> {
-                Result result = tx.run(ANOMALY_DETECTION_BATCH_QUERY);
-
-                List<AnomalyDetectionDTO> anomalies = new ArrayList<>();
-                while (result.hasNext()) {
-                    Record record = result.next();
-                    anomalies.add(new AnomalyDetectionDTO(
-                            record.get("EnterpriseId").asString(),
-                            record.get("SuspiciousDeveloper").asString(),
-                            record.get("CycleFrequency").asLong(),
-                            record.get("TasksWorked").asList(Value::asString),
-                            record.get("FinancedTasksInTheirProject").asList(Value::asString)));
-                }
-                return anomalies;
+                Result result = tx.run(ANOMALY_DETECTION_CROSS_ENTERPRISE_QUERY);
+                return mapCrossEnterpriseAnomalies(result);
             });
         }
     }
 
-    // QUERY 5 (single) — Anomaly Detection for a specific Enterprise
-    public List<AnomalyDetectionDTO> detectAnomaliesForEnterprise(String enterpriseId) {
+    public List<CrossEnterpriseAnomalyDTO> detectCrossEnterpriseAnomaliesForEnterprise(String enterpriseId) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             return session.executeRead(tx -> {
-                Result result = tx.run(ANOMALY_DETECTION_SINGLE_QUERY, Map.of("entId", enterpriseId));
-
-                List<AnomalyDetectionDTO> anomalies = new ArrayList<>();
-                while (result.hasNext()) {
-                    Record record = result.next();
-                    anomalies.add(new AnomalyDetectionDTO(
-                            record.get("EnterpriseId").asString(),
-                            record.get("SuspiciousDeveloper").asString(),
-                            record.get("CycleFrequency").asLong(),
-                            record.get("TasksWorked").asList(Value::asString),
-                            record.get("FinancedTasksInTheirProject").asList(Value::asString)));
-                }
-                return anomalies;
+                Result result = tx.run(ANOMALY_DETECTION_CROSS_ENTERPRISE_SINGLE_QUERY, Map.of("entId", enterpriseId));
+                return mapCrossEnterpriseAnomalies(result);
             });
         }
+    }
+
+    public List<DeveloperEnterpriseAnomalyDTO> detectDeveloperEnterpriseAnomalies() {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(ANOMALY_DETECTION_DEVELOPER_ENTERPRISE_QUERY);
+                return mapDeveloperEnterpriseAnomalies(result);
+            });
+        }
+    }
+
+    public List<DeveloperEnterpriseAnomalyDTO> detectDeveloperEnterpriseAnomaliesForEnterprise(String enterpriseId) {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(ANOMALY_DETECTION_DEVELOPER_ENTERPRISE_SINGLE_QUERY, Map.of("entId", enterpriseId));
+                return mapDeveloperEnterpriseAnomalies(result);
+            });
+        }
+    }
+
+    private List<CrossEnterpriseAnomalyDTO> mapCrossEnterpriseAnomalies(Result result) {
+        List<CrossEnterpriseAnomalyDTO> anomalies = new ArrayList<>();
+        while (result.hasNext()) {
+            Record record = result.next();
+            anomalies.add(new CrossEnterpriseAnomalyDTO(
+                    record.get("EnterpriseA").asString(),
+                    record.get("TasksFinancedByA_in_B").asLong(),
+                    record.get("EnterpriseB").asString(),
+                    record.get("TasksFinancedByB_in_A").asLong()
+            ));
+        }
+        return anomalies;
+    }
+
+    private List<DeveloperEnterpriseAnomalyDTO> mapDeveloperEnterpriseAnomalies(Result result) {
+        List<DeveloperEnterpriseAnomalyDTO> anomalies = new ArrayList<>();
+        while (result.hasNext()) {
+            Record record = result.next();
+            anomalies.add(new DeveloperEnterpriseAnomalyDTO(
+                    record.get("FraudsterDeveloper").asString(),
+                    record.get("ComplicitEnterprise").asString(),
+                    record.get("ShellProject").asString(),
+                    record.get("FakeTasksCompleted").asLong(),
+                    record.get("CompromisedTaskIDs").asList(Value::asString)
+            ));
+        }
+        return anomalies;
     }
 }
