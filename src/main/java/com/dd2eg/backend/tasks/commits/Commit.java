@@ -19,6 +19,14 @@ public class Commit {
     @Indexed(unique = true, sparse = true)
     private String hash;
 
+    private String taskId;
+
+    private String projectId;
+
+    private String authorId;
+
+    private String authorUsername;
+
     private String comment;
 
     private Integer numLines;
