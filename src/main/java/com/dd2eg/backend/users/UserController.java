@@ -51,6 +51,8 @@ public class UserController {
         return userService.getUserByEmail(email).orElseThrow(null);
     }
 
+
+
     @Operation(
             summary = "Get developer dashboard",
             description = "Returns dashboard statistics for the authenticated developer"
@@ -66,6 +68,22 @@ public class UserController {
         }
 
         return ResponseEntity.ok(userService.getDeveloperStats(currentUser.getId()));
+    }
+
+    @Operation(
+            summary = "Get user by ID",
+            description = "Returns a user based on their unique ID"
+    )
+    @ApiResponse(responseCode = "200", description = "User found successfully")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @GetMapping("/users/{id}")
+    public ResponseEntity<?> getUserById(@PathVariable String id) {
+        try {
+            User user = userService.getUserById(id);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with id: " + id);
+        }
     }
 
     @Operation(
