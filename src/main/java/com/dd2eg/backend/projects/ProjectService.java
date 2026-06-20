@@ -159,7 +159,11 @@ public class ProjectService {
         }
 
         String userId = currentUser.getId();
-          
+
+        if (project.getContributors() == null) {
+            project.setContributors(new java.util.ArrayList<>());
+        }
+
         if (project.getContributors().contains(userId)) {
             addProjectToLastProjectsIfUserIsNotOwner(project, currentUser);
             return project;
