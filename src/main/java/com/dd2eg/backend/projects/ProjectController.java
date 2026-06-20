@@ -59,26 +59,6 @@ public class ProjectController {
         }
     }
 
-    @PostMapping("/{projectId}/leave")
-    @Operation(
-            summary = "Leave a project",
-            description = "Removes the authenticated user from project contributors"
-    )
-    public ResponseEntity<?> leaveProject(
-            @PathVariable String projectId,
-            @AuthenticationPrincipal User currentUser) {
-
-        try {
-
-            Project updatedProject = projectService.removeContributorFromProject(projectId, currentUser);
-
-            return ResponseEntity.ok(updatedProject);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
     @GetMapping("/search")
     @Operation(
             summary = "Search projects",
