@@ -50,7 +50,7 @@ public class UserService {
     private final ProjectMongoRepository projectRepo;
     private final Neo4jRecommendationRepository neo4jRepo;
 
-    private User getUserById(String id) {
+    public User getUserById(String id) {
         return userRepository.findById(id).orElse(null);
     }
 
@@ -64,7 +64,7 @@ public class UserService {
 
     /**
      * Create a user
-     * @param the created user
+     * @param user the created user
      * @return The created user
      */
     @Transactional
@@ -163,11 +163,4 @@ public class UserService {
 
         return dashboardData;
     }
-
-    public EnterpriseStatsDTO getDashboardStats(String enterpriseId) {
-
-        return this.getEnterpriseDashboardStats(enterpriseId);
-    }
-
-
 }

@@ -1,10 +1,8 @@
-package com.dd2eg.backend.controller;
+package com.dd2eg.backend.projects;
 
-import com.dd2eg.backend.DTO.ProjectDTO;
-import com.dd2eg.backend.model.Project;
-import com.dd2eg.backend.service.ProjectService;
-import com.dd2eg.backend.DTO.CreateProjectDTO;
-import com.dd2eg.backend.model.User;
+import com.dd2eg.backend.projects.dto.CreateProjectDTO;
+import com.dd2eg.backend.projects.dto.ProjectDTO;
+import com.dd2eg.backend.users.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,26 +41,6 @@ public class ProjectController {
     public Project createProject(@RequestBody CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
         log.info("Creating new project: {}", project.getName());
         return projectService.createProject(project, currentUser);
-    }
-
-    @PostMapping("/{projectId}/leave")
-    @Operation(
-            summary = "Leave a project",
-            description = "Removes the authenticated user from project contributors"
-    )
-    public ResponseEntity<?> leaveProject(
-            @PathVariable String projectId,
-            @AuthenticationPrincipal User currentUser) {
-
-        try {
-
-            Project updatedProject = projectService.removeContributorFromProject(projectId, currentUser);
-
-            return ResponseEntity.ok(updatedProject);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
     }
 
     @Operation(

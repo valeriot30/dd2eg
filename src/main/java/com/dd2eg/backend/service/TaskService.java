@@ -150,7 +150,7 @@ public class TaskService {
     }
 
     @Transactional
-    public Task createTask(CreateTaskDTO request) {
+    public Task createTask(CreateTaskDTO request, User user) {
 
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new RuntimeException("Project not found"));
