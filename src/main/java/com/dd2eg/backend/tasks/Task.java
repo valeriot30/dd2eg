@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Sharded;
@@ -20,6 +21,7 @@ import java.util.List;
 @Document(collection = "tasks")
 @NoArgsConstructor
 @Sharded(shardKey = { "projectId", "_id" })
+@CompoundIndex(name = "project_status_idx", def = "{'projectId': 1, 'status': 1}")
 public class Task {
 
     @Id
@@ -32,7 +34,7 @@ public class Task {
     private String body;
 
     @Indexed(partialFilter = "{ status: 'OPEN' }")
-    private TaskStatus status;
+    private TaskStatus status = TaskStatus.PENDING;
 
     private String priority;
 

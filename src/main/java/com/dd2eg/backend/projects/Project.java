@@ -24,6 +24,7 @@ public class Project {
     private String id;
 
     @TextIndexed
+    @Indexed(unique = true)
     private String name;
 
     private String description;

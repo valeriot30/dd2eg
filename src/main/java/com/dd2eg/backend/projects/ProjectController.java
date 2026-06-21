@@ -1,6 +1,7 @@
 package com.dd2eg.backend.projects;
 
 import com.dd2eg.backend.projects.dto.CreateProjectDTO;
+import com.dd2eg.backend.projects.dto.ProjectDTO;
 import com.dd2eg.backend.users.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,23 +43,19 @@ public class ProjectController {
         return projectService.createProject(project, currentUser);
     }
 
-    @PostMapping("/{projectId}/leave")
     @Operation(
-            summary = "Leave a project",
-            description = "Removes the authenticated user from project contributors"
+            summary = "Get project by ID",
+            description = "Returns a single project based on its unique ID"
     )
-    public ResponseEntity<?> leaveProject(
-            @PathVariable String projectId,
-            @AuthenticationPrincipal User currentUser) {
-
+    @ApiResponse(responseCode = "200", description = "Project found successfully")
+    @ApiResponse(responseCode = "404", description = "Project not found")
+    @GetMapping("/{projectId}")
+    public ResponseEntity<?> getProjectById(@PathVariable String projectId) {
         try {
-
-            Project updatedProject = projectService.removeContributorFromProject(projectId, currentUser);
-
-            return ResponseEntity.ok(updatedProject);
-
+            ProjectDTO project = projectService.getProjectById(projectId);
+            return ResponseEntity.ok(project);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.status(404).body(e.getMessage());
         }
     }
 

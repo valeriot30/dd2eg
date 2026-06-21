@@ -1,7 +1,9 @@
 package com.dd2eg.backend.projects;
 
 import com.dd2eg.backend.projects.dto.CreateProjectDTO;
+import com.dd2eg.backend.projects.dto.ProjectDTO;
 import com.dd2eg.backend.projects.dto.ProjectStatusDTO;
+import com.dd2eg.backend.tasks.TaskStatus;
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventType;
@@ -9,11 +11,11 @@ import com.dd2eg.backend.users.User;
 import com.dd2eg.backend.users.dto.RecentProjectDTO;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.TextCriteria;
@@ -21,8 +23,10 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @AllArgsConstructor
 @Service
 public class ProjectService {
@@ -31,7 +35,7 @@ public class ProjectService {
     private EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
 
-    private static Integer NUM_LAST_PROJECTS = 10;
+    private static final Integer NUM_LAST_PROJECTS = 10;
 
     /**
      * Retrieve all projects
@@ -52,6 +56,10 @@ public class ProjectService {
     public Project createProject(CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             throw new RuntimeException("Authenticated user is required to create a project");
+        }
+
+        if (projectRepository.existsByName(project.getName())) {
+            throw new RuntimeException("A project with the name '" + project.getName() + "' already exists.");
         }
 
         Project newProject = new Project();
@@ -89,6 +97,60 @@ public class ProjectService {
         return savedProject;
     }
 
+    public ProjectDTO getProjectById(String projectId) {
+
+        MatchOperation matchProject = Aggregation.match(Criteria.where("_id").is(projectId));
+
+        LookupOperation lookupTasks = LookupOperation.newLookup()
+                .from("tasks")
+                .localField("_id")
+                .foreignField("projectId")
+                .as("tasks");
+
+        ProjectionOperation computeMetrics = Aggregation.project()
+                .and("_id").as("id")
+                .and("name").as("name")
+                .and("description").as("description")
+                .and("owner").as("ownerName")
+
+                .and("_id").as("id")
+                .and("name").as("name")
+                .and("description").as("description")
+                .and(context -> new Document("$filter",
+                        new Document("input", "$tasks")
+                                .append("as", "task")
+                                .append("cond", new Document("$eq",
+                                        List.of("$$task.status", "OPEN")))
+                )).as("openTasks")
+
+                .and(AccumulatorOperators.Avg.avgOf(
+                        VariableOperators.Map.itemsOf("tasks")
+                                .as("t")
+                                .andApply(ArrayOperators.Size.lengthOfArray("t.commits"))
+                )).as("avgContributionsPerTask")
+
+                .and(ArrayOperators.Size.lengthOfArray(
+                        ArrayOperators.Reduce.arrayOf("tasks.contributors")
+                                .withInitialValue(Collections.emptyList())
+                                .reduce(SetOperators.SetUnion.arrayAsSet("$$value").union("$$this"))
+                )).as("totalActiveContributors");
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                matchProject,
+                lookupTasks,
+                computeMetrics
+        );
+
+        log.info(aggregation.toString());
+
+        AggregationResults<ProjectDTO> results = mongoTemplate.aggregate(
+                aggregation,
+                "projects",
+                ProjectDTO.class
+        );
+        return results.getUniqueMappedResult();
+    }
+
     /**
      * Add a user to the contribution list of a project
      * 
@@ -107,7 +169,11 @@ public class ProjectService {
         }
 
         String userId = currentUser.getId();
-          
+
+        if (project.getContributors() == null) {
+            project.setContributors(new java.util.ArrayList<>());
+        }
+
         if (project.getContributors().contains(userId)) {
             addProjectToLastProjectsIfUserIsNotOwner(project, currentUser);
             return project;
