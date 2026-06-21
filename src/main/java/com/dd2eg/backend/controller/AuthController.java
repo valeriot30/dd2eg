@@ -10,6 +10,7 @@ import com.dd2eg.backend.utils.Message;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,9 +39,10 @@ public class AuthController {
     )
     @ApiResponse(responseCode = "200", description = "Login successful (JWT token returned)")
     @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    @ApiResponse(responseCode = "400", description = "Invalid request data")
     @ApiResponse(responseCode = "404", description = "User not found")
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequestDTO request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO request) {
 
         Optional<User> userOptional = userService.getUserByEmail(request.getEmail());
 
@@ -89,8 +91,9 @@ public class AuthController {
     )
     @ApiResponse(responseCode = "201", description = "User created successfully")
     @ApiResponse(responseCode = "409", description = "Email already exists")
+    @ApiResponse(responseCode = "400", description = "Invalid request data")
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody SignupRequestDTO request) {
+    public ResponseEntity<?> signup(@Valid @RequestBody SignupRequestDTO request) {
 
         Optional<User> existingUser = userService.getUserByEmail(request.getEmail());
 
