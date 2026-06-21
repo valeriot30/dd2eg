@@ -204,4 +204,14 @@ public class TaskService {
 
         return taskRepository.save(task);
     }
+
+    /**
+     * Get a task by id
+     * @param taskId
+     * @return
+     */
+    public Task getTaskById(String taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+    }
 }

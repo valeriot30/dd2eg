@@ -1,16 +1,10 @@
 package com.dd2eg.backend.service;
 
-import com.dd2eg.backend.repository.Neo4jRecommendationRepository;
+import com.dd2eg.backend.model.*;
+import com.dd2eg.backend.repository.*;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
-import com.dd2eg.backend.model.Project;
-import com.dd2eg.backend.repository.ProjectMongoRepository;
-import com.dd2eg.backend.model.Task;
-import com.dd2eg.backend.model.Event;
-import com.dd2eg.backend.repository.EventRepository;
 import com.dd2eg.backend.utils.EventType;
-import com.dd2eg.backend.model.User;
-import com.dd2eg.backend.repository.UserMongoRepository;
 import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
@@ -31,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +41,7 @@ public class UserService {
 
     private final UserMongoRepository userRepository;
     private final EventRepository eventRepository;
+    private final SkillRepository skillRepository;
     private final MongoTemplate mongoTemplate;
     private final ProjectMongoRepository projectRepo;
     private final Neo4jRecommendationRepository neo4jRepo;
@@ -86,6 +82,24 @@ public class UserService {
         eventRepository.save(event);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser).getBody();
+    }
+
+    public User updateUserSkills(String userId, List<String> newSkills) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        List<Skill> skills = new ArrayList<>();
+
+        for (String skill : newSkills) {
+            Skill newSkill = new Skill();
+            newSkill.setName(skill);
+            skillRepository.save(newSkill);
+            skills.add(newSkill);
+        }
+
+        user.setSkills(skills);
+
+        return userRepository.save(user);
     }
 
     public DeveloperStatsDTO getDeveloperStats(String userId) {

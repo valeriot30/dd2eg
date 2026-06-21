@@ -54,6 +54,29 @@ public class UserController {
         return userService.getUserByEmail(email).orElseThrow(null);
     }
 
+    @Operation(
+            summary = "Update user skills",
+            description = "Updates the list of skills for the authenticated user"
+    )
+    @ApiResponse(responseCode = "200", description = "Skills updated successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request data")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PutMapping("/users/skills")
+    public ResponseEntity<?> updateUserSkills(
+            @RequestBody List<String> skills,
+            @AuthenticationPrincipal User currentUser) {
+
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+        }
+
+        try {
+            User updatedUser = userService.updateUserSkills(currentUser.getId(), skills);
+            return ResponseEntity.ok(updatedUser);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 
 
     @Operation(
