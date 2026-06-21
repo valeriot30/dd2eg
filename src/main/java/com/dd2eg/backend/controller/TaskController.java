@@ -113,6 +113,22 @@ public class TaskController {
     }
 
     @Operation(
+            summary = "Get task by ID",
+            description = "Returns a single task based on its unique ID"
+    )
+    @ApiResponse(responseCode = "200", description = "Task found successfully")
+    @ApiResponse(responseCode = "404", description = "Task not found")
+    @GetMapping("/detail/{taskId}")
+    public ResponseEntity<?> getTaskById(@PathVariable String taskId) {
+        try {
+            Task task = taskService.getTaskById(taskId);
+            return ResponseEntity.ok(task);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    @Operation(
             summary = "Accept a task",
             description = "Allows the project creator to accept a pending task and move it to OPEN status"
     )
