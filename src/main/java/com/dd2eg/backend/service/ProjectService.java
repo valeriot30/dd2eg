@@ -20,8 +20,6 @@ import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
 import java.util.List;
 
 @AllArgsConstructor
@@ -32,7 +30,7 @@ public class ProjectService {
     private EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
 
-    private static Integer NUM_LAST_PROJECTS = 10;
+    private static final Integer NUM_LAST_PROJECTS = 10;
 
     /**
      * Retrieve all projects
@@ -98,54 +96,7 @@ public class ProjectService {
     }
 
     public ProjectDTO getProjectById(String projectId) {
-
-        MatchOperation matchProject = Aggregation.match(Criteria.where("_id").is(projectId));
-
-        LookupOperation lookupTasks = LookupOperation.newLookup()
-                .from("tasks")
-                .localField("_id")
-                .foreignField("projectId")
-                .as("tasks");
-
-        ProjectionOperation computeMetrics = Aggregation.project()
-                .and("_id").as("id")
-                .and("name").as("name")
-                .and("description").as("description")
-                .and("owner").as("ownerName")
-
-                .and("_id").as("id")
-                .and("name").as("name")
-                .and("description").as("description")
-                .and(context -> new Document("$filter",
-                        new Document("input", "$tasks")
-                                .append("as", "task")
-                                .append("cond", new Document("$eq",
-                                        List.of("$$task.status", "OPEN")))
-                )).as("openTasks")
-
-                .and(AccumulatorOperators.Avg.avgOf(
-                        VariableOperators.Map.itemsOf("tasks")
-                                .as("t")
-                                .andApply(ArrayOperators.Size.lengthOfArray("t.commits"))
-                )).as("avgContributionsPerTask")
-
-                .and(ArrayOperators.Size.lengthOfArray(
-                        ArrayOperators.Reduce.arrayOf("tasks.contributors")
-                                .withInitialValue(Collections.emptyList())
-                                .reduce(SetOperators.SetUnion.arrayAsSet("$$value").union("$$this"))
-                )).as("totalActiveContributors");
-
-        Aggregation aggregation = Aggregation.newAggregation(
-                matchProject,
-                lookupTasks,
-                computeMetrics
-        );
-        AggregationResults<ProjectDTO> results = mongoTemplate.aggregate(
-                aggregation,
-                "projects",
-                ProjectDTO.class
-        );
-        return results.getUniqueMappedResult();
+        return projectRepository.findProjectDetailsById(projectId);
     }
 
     /**
