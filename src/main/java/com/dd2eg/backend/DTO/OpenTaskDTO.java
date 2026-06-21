@@ -8,6 +8,5 @@ public class OpenTaskDTO {
     private String id;
     private String description;
     private String title;
-    private TaskStatus status;
     private String priority;
 }
