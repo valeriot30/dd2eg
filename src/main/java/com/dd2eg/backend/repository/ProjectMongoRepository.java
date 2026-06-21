@@ -1,5 +1,6 @@
 package com.dd2eg.backend.repository;
 
+import com.dd2eg.backend.DTO.ProjectDTO;
 import com.dd2eg.backend.model.Project;
 import com.dd2eg.backend.DTO.TopContributorDTO;
 import org.springframework.data.mongodb.core.query.TextCriteria;
@@ -21,4 +22,59 @@ public interface ProjectMongoRepository extends MongoRepository<Project, String>
     List<TopContributorDTO> findTopContributors(int limit);
 
     boolean existsByName(String name);
+
+    @Aggregation(pipeline = {
+
+            """
+            { $match: { $expr: { $eq: [ { $toString: '$_id' }, ?0 ] } } }
+            """,
+
+            """
+            { $addFields: { stringId: { $toString: '$_id' } } }
+            """,
+
+            """
+            { $lookup: { 
+                from: 'tasks', 
+                localField: 'stringId', 
+                foreignField: 'projectId', 
+                as: 'tasks' 
+            } }
+            """,
+
+            """
+            { $project: {
+                id: '$_id',
+                name: '$name',
+                description: '$description',
+                ownerName: '$owner',
+                openTasks: {
+                    $filter: {
+                        input: '$tasks',
+                        as: 'task',
+                        cond: { $eq: ['$$task.status', 'OPEN'] }
+                    }
+                },
+                avgContributionsPerTask: {
+                    $avg: {
+                        $map: {
+                            input: '$tasks',
+                            as: 't',
+                            in: { $size: { $ifNull: ['$$t.commits', []] } }
+                        }
+                    }
+                },
+                totalActiveContributors: {
+                    $size: {
+                        $reduce: {
+                            input: '$tasks.contributors',
+                            initialValue: [],
+                            in: { $setUnion: ['$$value', '$$this'] }
+                        }
+                    }
+                }
+            } }
+            """
+    })
+    ProjectDTO findProjectDetailsById(String projectId);
 }
