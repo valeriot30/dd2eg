@@ -1,8 +1,10 @@
-package com.dd2eg.backend.projects;
+package com.dd2eg.backend.controller;
 
-import com.dd2eg.backend.projects.dto.CreateProjectDTO;
-import com.dd2eg.backend.projects.dto.ProjectDTO;
-import com.dd2eg.backend.users.User;
+import com.dd2eg.backend.DTO.CreateProjectDTO;
+import com.dd2eg.backend.DTO.ProjectDTO;
+import com.dd2eg.backend.model.Project;
+import com.dd2eg.backend.model.User;
+import com.dd2eg.backend.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
