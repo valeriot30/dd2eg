@@ -18,4 +18,6 @@ public interface ProjectMongoRepository extends MongoRepository<Project, String>
             "{ $limit: ?0 }"
     })
     List<TopContributorDTO> findTopContributors(int limit);
+
+    boolean existsByName(String name);
 }

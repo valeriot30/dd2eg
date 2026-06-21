@@ -34,7 +34,7 @@ public class Task {
     private String body;
 
     @Indexed(partialFilter = "{ status: 'OPEN' }")
-    private TaskStatus status;
+    private TaskStatus status = TaskStatus.PENDING;
 
     private String priority;
 

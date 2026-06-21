@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import time
+import random
 from dotenv import load_dotenv
 
 # ==========================================
@@ -19,18 +20,50 @@ if not ADMIN_EMAIL or not ADMIN_PASSWORD:
     exit(1)
 
 # ==========================================
-# AUTHENTICATION & TOKEN CACHE
+# AUTHENTICATION, CACHE & AUTO-CREATION
 # ==========================================
 TOKEN_CACHE = {}
 
-def get_auth_headers(email, password):
-    """Logs in and returns the headers with the JWT token. Uses cache."""
+def create_missing_user(username, role="DEVELOPER"):
+    """Crea un utente al volo assegnandogli il ruolo specificato (DEVELOPER o ENTERPRISE)"""
+    user_url = f"{BACKEND_URL}/api/users"
+    user_payload = {
+        "username": username,
+        "name": username,
+        "email": f"{username}@github.dev",
+        "password": "Password123!",
+        "userType": role
+    }
+
+    try:
+        # Usa temporaneamente le credenziali Admin per creare l'utente
+        admin_login = requests.post(f"{BACKEND_URL}/api/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+        admin_token = admin_login.json().get("token") or admin_login.json().get("accessToken") if admin_login.status_code == 200 else ""
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {admin_token}"} if admin_token else {}
+
+        res = requests.post(user_url, json=user_payload, headers=headers)
+        if res.status_code in [200, 201]:
+            print(f"  🌟 Auto-created missing user: {username} (Role: {role})")
+            return True
+        else:
+            print(f"  ❌ Auto-create failed for {username}: {res.text}")
+            return False
+    except Exception as e:
+        print(f"  ❌ Error creating user {username}: {e}")
+        return False
+
+def get_auth_headers(username, role="DEVELOPER", attempt=1):
+    """Esegue il login. Se fallisce, crea l'utente col ruolo specificato e riprova in automatico."""
+    email = f"{username}@github.dev"
+    password = "Password123!"
+
     if email in TOKEN_CACHE:
         return {"Content-Type": "application/json", "Authorization": f"Bearer {TOKEN_CACHE[email]}"}
 
     login_url = f"{BACKEND_URL}/api/auth/login"
     try:
         response = requests.post(login_url, json={"email": email, "password": password})
+
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -40,8 +73,15 @@ def get_auth_headers(email, password):
 
             TOKEN_CACHE[email] = token
             return {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+
         else:
-            return None
+            # SE IL LOGIN FALLISCE AL PRIMO TENTATIVO -> CREA L'UTENTE E RIPROVA
+            if attempt == 1:
+                if create_missing_user(username, role):
+                    return get_auth_headers(username, role, attempt=2)
+
+            return None # Se fallisce anche al secondo tentativo, rinuncia.
+
     except requests.exceptions.RequestException:
         return None
 
@@ -54,69 +94,30 @@ def import_system_data():
         print(f"❌ ERROR: Input file '{INPUT_FILE}' not found.")
         return
 
-    admin_headers = get_auth_headers(ADMIN_EMAIL, ADMIN_PASSWORD)
-    if not admin_headers:
-        print("❌ ERROR: Admin authentication failed. Check credentials and server status.")
-        exit(1)
-
     print(f"📂 Loading data from {INPUT_FILE}...")
     with open(INPUT_FILE, "r", encoding="utf-8") as f:
         projects_batch = json.load(f)
 
-    # ==========================================
-    # 1. EXTRACT ALL USERS
-    # ==========================================
-    print("🔍 Scanning for all unique users (Owners, Contributors, Commenters, Committers)...")
-    unique_users = set()
-
-    for project in projects_batch:
-        if project.get("owner"): unique_users.add(project.get("owner"))
-
-        for task in project.get("tasks", []):
-            for contributor in task.get("contributors", []):
-                if contributor and contributor != "unknown_user":
-                    unique_users.add(contributor)
-
-            for comment in task.get("comments", []):
-                if comment.get("authorUsername"): unique_users.add(comment.get("authorUsername"))
-
-            # NUOVO: Estrazione autori dei commit
-            for commit in task.get("commits", []):
-                if commit.get("authorUsername"): unique_users.add(commit.get("authorUsername"))
-
-    print(f"👥 Found {len(unique_users)} unique users. Syncing with backend...")
-
-    user_url = f"{BACKEND_URL}/api/users"
-
-    for username in unique_users:
-        user_payload = {
-            "username": username,
-            "name": username,
-            "email": f"{username}@github.dev",
-            "password": "Password123!",
-            "userType": "DEVELOPER"
-        }
-
-        try:
-            res = requests.post(user_url, json=user_payload, headers=admin_headers)
-            if res.status_code in [200, 201]:
-                print(f"  👤 Created user: {username}")
-        except Exception:
-            pass
-
     print("\n🚀 Starting transaction pipeline for Projects, Tasks, Comments and Commits...\n")
 
-    # ==========================================
-    # 2. PIPELINE
-    # ==========================================
     for project in projects_batch:
         owner_username = project.get("owner", "unknown")
-        owner_headers = get_auth_headers(f"{owner_username}@github.dev", "Password123!") or admin_headers
 
-        # CREATE PROJECT
+        # L'owner del progetto viene creato come ENTERPRISE
+        owner_headers = get_auth_headers(owner_username, role="ENTERPRISE")
+
+        if not owner_headers:
+            print(f"    ⚠️ Skipping project '{project.get('projectName')}': Cannot create or authenticate owner {owner_username}")
+            continue
+
+        # CREATE PROJECT (con descrizione reale fixata)
+        real_description = project.get("description")
+        if not real_description:
+            real_description = f"Open Source Project imported from GitHub ({owner_username}/{project.get('projectName', 'Unknown')})."
+
         project_payload = {
             "name": project.get("projectName", "Unknown Project"),
-            "description": f"Open Source Project imported from GitHub ({owner_username}/{project.get('projectName', '')}).",
+            "description": real_description,
             "tags": project.get("tags", [])
         }
 
@@ -125,10 +126,14 @@ def import_system_data():
 
         try:
             project_response = requests.post(project_url, json=project_payload, headers=owner_headers)
-            if project_response.status_code not in [200, 201]: continue
+            if project_response.status_code not in [200, 201]:
+                print(f"    ❌ Failed to create project: {project_response.status_code} - {project_response.text}")
+                continue
+
             project_id = project_response.json().get("id")
             if not project_id: continue
-        except Exception:
+        except Exception as e:
+            print(f"    ❌ Exception creating project: {str(e)}")
             continue
 
         # CREATE TASKS
@@ -136,8 +141,12 @@ def import_system_data():
             task_desc = task.get("description") or "No description provided."
             commits_list = task.get("commits", [])
 
-            # Pre-allochiamo almeno 10 slot, o quanti sono i commit effettivi nel JSON
-            max_commits = max(10, len(commits_list))
+            # Calcolo numMaxCommits: numero di commit reali + un offset random da 0 a 5
+            real_commits_count = len(commits_list)
+            max_commits = max(1, real_commits_count + random.randint(0, 5))
+
+            # Generazione budget casuale per il task (tra 50 e 1000)
+            random_budget = random.randint(50, 1000)
 
             task_payload = {
                 "projectId": project_id,
@@ -146,55 +155,66 @@ def import_system_data():
                 "body": task_desc,
                 "priority": "MEDIUM",
                 "numMaxCommits": max_commits,
+                "budget": random_budget,
                 "skills": []
             }
 
-            print(f"    📝 Creating Task: {task_payload['title'][:40]}...")
+            print(f"    📝 Creating Task: {task_payload['title'][:40]} (Max Commits: {max_commits}, Budget: {random_budget})...")
             task_url = f"{BACKEND_URL}/api/tasks/add"
 
             try:
                 task_response = requests.post(task_url, json=task_payload, headers=owner_headers)
-                if task_response.status_code not in [200, 201]: continue
+                if task_response.status_code not in [200, 201]:
+                    print(f"      ❌ Failed to create task: {task_response.status_code} - {task_response.text}")
+                    continue
                 task_id = task_response.json().get("id")
-            except Exception:
+            except Exception as e:
+                print(f"      ❌ Exception creating task: {str(e)}")
                 continue
 
             # ADD COMMENTS
             for comment in task.get("comments", []):
                 if not comment.get("content"): continue
 
-                commenter_email = f"{comment.get('authorUsername')}@github.dev"
-                commenter_headers = get_auth_headers(commenter_email, "Password123!") or admin_headers
+                commenter_username = comment.get("authorUsername", "unknown")
+                # I commentatori vengono creati come DEVELOPER
+                commenter_headers = get_auth_headers(commenter_username, role="DEVELOPER")
+
+                if not commenter_headers:
+                    continue
 
                 comment_url = f"{BACKEND_URL}/api/tasks/{task_id}/comments/add"
                 try:
                     requests.post(comment_url, json={"content": comment.get("content")}, headers=commenter_headers)
                 except Exception: pass
 
-            # NUOVO: ADD COMMITS
+            # ADD COMMITS
             for commit in commits_list:
-                committer_author = commit.get("authorUsername", "unknown")
-                committer_email = f"{committer_author}@github.dev"
-                committer_headers = get_auth_headers(committer_email, "Password123!") or admin_headers
+                committer_username = commit.get("authorUsername", "unknown")
+                # I committer vengono creati come DEVELOPER
+                committer_headers = get_auth_headers(committer_username, role="DEVELOPER")
 
-                # Mappa i campi secondo il tuo CreateCommitDTO Java
+                if not committer_headers:
+                    print(f"        ⚠️ Skipping commit {commit.get('hash', '')[:7]} - Cannot authenticate {committer_username}")
+                    continue
+
                 commit_payload = {
-                    "hash": commit.get("hash", f"mock-{int(time.time()*1000)}"), # Fallback se manca
-                    "comment": commit.get("message", "Commit message")[:200],    # Usa 'message' o adatta alla tua JSON structure
-                    "numLines": commit.get("numLines", 10)                       # Fallback se manca
+                    "hash": commit.get("hash", f"mock-{int(time.time()*1000)}"),
+                    "comment": commit.get("message", "Commit message")[:200],
+                    "numLines": commit.get("numLines", 10)
                 }
 
                 commit_url = f"{BACKEND_URL}/api/tasks/{task_id}/commits/add"
                 try:
                     commit_response = requests.post(commit_url, json=commit_payload, headers=committer_headers)
                     if commit_response.status_code not in [200, 201]:
-                        print(f"        ⚠️ Warning: Failed to add commit {commit_payload['hash'][:7]}")
+                        print(f"        ❌ Backend Error {commit_response.status_code}: {commit_response.text}")
                 except Exception as e:
                     print(f"        ⚠️ Connection error on commit insertion: {str(e)}")
 
         time.sleep(0.5)
 
-    print("\n🎉 IMPORT PROCESS COMPLETED! Projects, Comments, and Commits are now safely stored in MongoDB.")
+    print("\n🎉 IMPORT PROCESS COMPLETED! Projects, Tasks, Comments, and Commits are now safely stored in MongoDB.")
 
 if __name__ == "__main__":
     start_time = time.time()

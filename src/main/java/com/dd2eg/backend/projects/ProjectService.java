@@ -3,6 +3,7 @@ package com.dd2eg.backend.projects;
 import com.dd2eg.backend.projects.dto.CreateProjectDTO;
 import com.dd2eg.backend.projects.dto.ProjectDTO;
 import com.dd2eg.backend.projects.dto.ProjectStatusDTO;
+import com.dd2eg.backend.tasks.TaskStatus;
 import com.dd2eg.backend.tasks.events.Event;
 import com.dd2eg.backend.tasks.events.EventRepository;
 import com.dd2eg.backend.tasks.events.EventType;
@@ -10,6 +11,7 @@ import com.dd2eg.backend.users.User;
 import com.dd2eg.backend.users.dto.RecentProjectDTO;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @AllArgsConstructor
 @Service
 public class ProjectService {
@@ -53,6 +56,10 @@ public class ProjectService {
     public Project createProject(CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             throw new RuntimeException("Authenticated user is required to create a project");
+        }
+
+        if (projectRepository.existsByName(project.getName())) {
+            throw new RuntimeException("A project with the name '" + project.getName() + "' already exists.");
         }
 
         Project newProject = new Project();
@@ -94,7 +101,6 @@ public class ProjectService {
 
         MatchOperation matchProject = Aggregation.match(Criteria.where("_id").is(projectId));
 
-        // Stage 2: Lookup per tirare dentro tutti i task associati a questo progetto dalla collection 'tasks'
         LookupOperation lookupTasks = LookupOperation.newLookup()
                 .from("tasks")
                 .localField("_id")
@@ -102,19 +108,22 @@ public class ProjectService {
                 .as("tasks");
 
         ProjectionOperation computeMetrics = Aggregation.project()
-                .andExpression("_id").as("id")
-                .andExpression("name").as("name")
-                .andExpression("description").as("description")
-                .andExpression("owner").as("ownerName")
+                .and("_id").as("id")
+                .and("name").as("name")
+                .and("description").as("description")
+                .and("owner").as("ownerName")
 
-
-                .and(ArrayOperators.Filter.filter("tasks")
-                        .as("task")
-                        .by(ComparisonOperators.valueOf("task.status").equalToValue("OPEN"))
-                ).as("openTasks")
+                .and("_id").as("id")
+                .and("name").as("name")
+                .and("description").as("description")
+                .and(context -> new Document("$filter",
+                        new Document("input", "$tasks")
+                                .append("as", "task")
+                                .append("cond", new Document("$eq",
+                                        List.of("$$task.status", "OPEN")))
+                )).as("openTasks")
 
                 .and(AccumulatorOperators.Avg.avgOf(
-
                         VariableOperators.Map.itemsOf("tasks")
                                 .as("t")
                                 .andApply(ArrayOperators.Size.lengthOfArray("t.commits"))
@@ -132,12 +141,13 @@ public class ProjectService {
                 computeMetrics
         );
 
+        log.info(aggregation.toString());
+
         AggregationResults<ProjectDTO> results = mongoTemplate.aggregate(
                 aggregation,
-                "projects", // Collection di partenza
+                "projects",
                 ProjectDTO.class
         );
-
         return results.getUniqueMappedResult();
     }
 

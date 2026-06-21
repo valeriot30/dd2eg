@@ -107,8 +107,8 @@ public class TaskController {
     @ApiResponse(responseCode = "200", description = "Task created successfully")
     @ApiResponse(responseCode = "400", description = "Invalid task data")
     @PostMapping("/add")
-    public Task createTask(@RequestBody CreateTaskDTO request) {
-        return taskService.createTask(request);
+    public Task createTask(@RequestBody CreateTaskDTO request, @AuthenticationPrincipal User currentUser) {
+        return taskService.createTask(request, currentUser);
     }
 
     @Operation(
