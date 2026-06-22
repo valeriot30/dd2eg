@@ -108,8 +108,26 @@ public class UserService {
         }
 
         user.setSkills(skills);
+        User savedUser = userRepository.save(user);
 
-        return userRepository.save(user);
+        Event event = new Event();
+        event.setType(EventType.UPDATE_USER_SKILLS);
+
+        Document document = new Document();
+        document.put("userId", user.getId());
+        
+        List<String> skillNames = new java.util.ArrayList<>();
+        for (Skill s : skills) {
+            if (s.getName() != null) {
+                skillNames.add(s.getName());
+            }
+        }
+        document.put("skills", skillNames);
+        event.setPayload(document.toJson());
+
+        eventRepository.save(event);
+
+        return savedUser;
     }
 
     public DeveloperStatsDTO getDeveloperStats(String userId) {
@@ -134,6 +152,8 @@ public class UserService {
                     );
                 })
                 .toList();
+
+        stats.setTrendingProjects(dashboardProjects);
 
         stats.setTopContributors(projectRepo.findTopContributors(10));
 

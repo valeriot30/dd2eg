@@ -189,6 +189,7 @@ public class GraphSyncService {
             case ADD_TASK -> processAddTask(payload);
             case FUNDING -> processFunding(payload);
             case ADD_WORKER_TO_TASK -> processAddWorkerToTask(payload);
+            case UPDATE_USER_SKILLS -> processUpdateUserSkills(payload);
             default -> throw new RuntimeException("Unknown event type: " + event.getType());
         }
     }
@@ -220,6 +221,27 @@ public class GraphSyncService {
         }
 
         neo4jWriteRepository.createUser(userId, userType, skillNames);
+    }
+
+    private void processUpdateUserSkills(Document payload) {
+        String userId = payload.getString("userId");
+
+        List<String> skillNames = new ArrayList<>();
+        List<?> skills = payload.getList("skills", Object.class);
+        if (skills != null) {
+            for (Object skill : skills) {
+                if (skill instanceof Document skillDoc) {
+                    String name = skillDoc.getString("name");
+                    if (name != null) {
+                        skillNames.add(name);
+                    }
+                } else if (skill instanceof String skillName) {
+                    skillNames.add(skillName);
+                }
+            }
+        }
+
+        neo4jWriteRepository.updateUserSkills(userId, skillNames);
     }
 
     private void processAddProject(Document payload) {

@@ -61,6 +61,34 @@ public class Neo4jWriteRepository {
     }
 
     /**
+     * UPDATE_USER_SKILLS — Updates the skills of a Developer.
+     * Deletes existing HAS_SKILL relationships and recreates them.
+     */
+    public void updateUserSkills(String userId, List<String> skillNames) {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            session.executeWrite(tx -> {
+                // Delete existing relationships
+                tx.run("MATCH (u:Developer {id: $userId})-[r:HAS_SKILL]->() DELETE r",
+                        Map.of("userId", userId));
+
+                // Create new skills and HAS_SKILL relationships
+                if (skillNames != null) {
+                    for (String skillName : skillNames) {
+                        tx.run("""
+                                MATCH (u:Developer {id: $userId})
+                                MERGE (s:Skill {name: $skillName})
+                                MERGE (u)-[:HAS_SKILL]->(s)
+                                """,
+                                Map.of("userId", userId, "skillName", skillName));
+                    }
+                }
+                return null;
+            });
+        }
+        log.debug("[Neo4jWrite] Updated skills for user: {}", userId);
+    }
+
+    /**
      * ADD_PROJECT — Creates a Project node with its associated Tags.
      *
      * Resulting graph:
