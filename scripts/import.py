@@ -161,6 +161,8 @@ def import_system_data(limit=None):
                 task_response = requests.post(task_url, json=task_payload, headers=owner_headers)
                 if task_response.status_code not in [200, 201]: continue
                 task_id = task_response.json().get("id")
+                
+                requests.put(f"{BACKEND_URL}/api/tasks/{task_id}/accept", headers=owner_headers)
             except Exception:
                 continue
 
