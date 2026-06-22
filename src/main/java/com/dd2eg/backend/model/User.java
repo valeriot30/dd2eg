@@ -43,7 +43,7 @@ public class User implements UserDetails {
 
     private EnterpriseInfo enterpriseInfo;
 
-    private List<Skill> skills;
+    private List<Skill> skills = new ArrayList<>();
 
     private boolean enabled = true;
 
