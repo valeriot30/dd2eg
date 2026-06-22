@@ -33,11 +33,15 @@ public class User implements UserDetails {
     @Indexed(unique = true)
     private String email;
 
+    private String profilePic;
+
     private String password;
 
     private UserType userType = UserType.DEVELOPER;
 
-    private Double rating = 0.0;
+    private DeveloperInfo developerInfo;
+
+    private EnterpriseInfo enterpriseInfo;
 
     private List<Skill> skills;
 
