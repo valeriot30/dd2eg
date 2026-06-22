@@ -80,6 +80,7 @@ public class UserService {
 
         Document document = new Document();
         document.put("userId", user.getId());
+        document.put("userType", user.getUserType() != null ? user.getUserType().name() : "DEVELOPER");
         
         List<String> skillNames = new java.util.ArrayList<>();
         if (user.getSkills() != null) {
