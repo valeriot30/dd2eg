@@ -76,7 +76,17 @@ public class UserService {
 
         Document document = new Document();
         document.put("userId", user.getId());
-        document.put("skills", user.getSkills());
+        document.put("userType", user.getUserType() != null ? user.getUserType().name() : "DEVELOPER");
+        
+        List<String> skillNames = new java.util.ArrayList<>();
+        if (user.getSkills() != null) {
+            for (com.dd2eg.backend.model.Skill s : user.getSkills()) {
+                if (s.getName() != null) {
+                    skillNames.add(s.getName());
+                }
+            }
+        }
+        document.put("skills", skillNames);
         event.setPayload(document.toJson());
 
         eventRepository.save(event);

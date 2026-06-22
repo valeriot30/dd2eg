@@ -3,7 +3,10 @@ import json
 import requests
 import time
 import uuid
+import random
 from dotenv import load_dotenv
+
+MOCK_SKILLS = ["Python", "Java", "React", "NodeJS", "Neo4j", "MongoDB", "Spring Boot", "TypeScript", "Docker", "Kubernetes"]
 
 # ==========================================
 # ENVIRONMENT CONFIGURATION
@@ -50,7 +53,7 @@ def get_auth_headers(email, password):
 # CORE IMPORT LOGIC
 # ==========================================
 
-def import_system_data(limit=None):
+def import_system_data(limit=None, mock=False):
     if not os.path.exists(INPUT_FILE):
         print(f"❌ ERROR: Input file '{INPUT_FILE}' not found.")
         return
@@ -93,13 +96,24 @@ def import_system_data(limit=None):
 
     user_url = f"{BACKEND_URL}/api/users"
 
+    enterprises = []
     for username in unique_users:
+        user_type = "DEVELOPER"
+        skills = []
+        if mock:
+            if random.random() < 0.15:
+                user_type = "ENTERPRISE"
+                enterprises.append(username)
+            else:
+                skills = [{"name": s} for s in random.sample(MOCK_SKILLS, random.randint(1, 3))]
+
         user_payload = {
             "username": username,
             "name": username,
             "email": f"{username}@github.dev",
             "password": "Password123!",
-            "userType": "DEVELOPER"
+            "userType": user_type,
+            "skills": skills
         }
 
         try:
@@ -114,6 +128,7 @@ def import_system_data(limit=None):
     # ==========================================
     # 2. PIPELINE
     # ==========================================
+    all_task_ids = []
     for project in projects_batch:
         owner_username = project.get("owner", "unknown")
         owner_headers = get_auth_headers(f"{owner_username}@github.dev", "Password123!") or admin_headers
@@ -144,6 +159,7 @@ def import_system_data(limit=None):
             # Pre-allochiamo almeno 10 slot, o quanti sono i commit effettivi nel JSON
             max_commits = max(10, len(commits_list))
 
+            task_skills = random.sample(MOCK_SKILLS, random.randint(1, 3)) if mock else []
             task_payload = {
                 "projectId": project_id,
                 "title": task.get("title", "Untitled Task"),
@@ -151,7 +167,7 @@ def import_system_data(limit=None):
                 "body": task_desc,
                 "priority": "MEDIUM",
                 "numMaxCommits": max_commits,
-                "skills": []
+                "skills": task_skills
             }
 
             print(f"    📝 Creating Task: {task_payload['title'][:40]}...")
@@ -161,6 +177,10 @@ def import_system_data(limit=None):
                 task_response = requests.post(task_url, json=task_payload, headers=owner_headers)
                 if task_response.status_code not in [200, 201]: continue
                 task_id = task_response.json().get("id")
+                all_task_ids.append(task_id)
+                
+                accept_url = f"{BACKEND_URL}/api/tasks/{task_id}/accept"
+                requests.put(accept_url, headers=owner_headers)
             except Exception:
                 continue
 
@@ -193,11 +213,26 @@ def import_system_data(limit=None):
                 try:
                     commit_response = requests.post(commit_url, json=commit_payload, headers=committer_headers)
                     if commit_response.status_code not in [200, 201]:
-                        print(f"        ⚠️ Warning: Failed to add commit {commit_payload['hash'][:7]}")
+                        print(f"        ⚠️ Warning: Failed to add commit {commit_payload['hash'][:7]}. Status: {commit_response.status_code}, Error: {commit_response.text}")
                 except Exception as e:
                     print(f"        ⚠️ Connection error on commit insertion: {str(e)}")
 
         time.sleep(0.5)
+
+    if mock and enterprises and all_task_ids:
+        print("\n💸 [MOCK] Creating random financings from Enterprises...")
+        for ent in enterprises:
+            ent_headers = get_auth_headers(f"{ent}@github.dev", "Password123!") or admin_headers
+            num_fundings = random.randint(1, 3)
+            tasks_to_finance = random.sample(all_task_ids, min(num_fundings, len(all_task_ids)))
+            for tid in tasks_to_finance:
+                fund_url = f"{BACKEND_URL}/api/tasks/{tid}/fund"
+                fund_payload = {"taskId": tid, "amount": random.randint(500, 5000)}
+                try:
+                    res = requests.post(fund_url, json=fund_payload, headers=ent_headers)
+                    if res.status_code in [200, 201]:
+                        print(f"    💵 Enterprise {ent} funded task {tid[:8]} with {fund_payload['amount']}€")
+                except Exception: pass
 
     print("\n🎉 IMPORT PROCESS COMPLETED! Projects, Comments, and Commits are now safely stored in MongoDB.")
 
@@ -205,8 +240,9 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Import system data to DD2EG backend")
     parser.add_argument("--limit", type=int, default=None, help="Limit the number of projects to import for testing purposes")
+    parser.add_argument("--mock-recs", action="store_true", help="Generate mock skills, enterprises and financings for testing recommendations")
     args = parser.parse_args()
 
     start_time = time.time()
-    import_system_data(limit=args.limit)
+    import_system_data(limit=args.limit, mock=args.mock_recs)
     print(f"⏱️ Total execution time: {round(time.time() - start_time, 2)} seconds.")

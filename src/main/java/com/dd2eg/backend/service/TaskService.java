@@ -166,8 +166,7 @@ public class TaskService {
 
         task.setProjectId(project.getId());
 
-        //TODO CHANGE THIS TO PENDING
-        task.setStatus(TaskStatus.OPEN);
+        task.setStatus(TaskStatus.PENDING);
 
         return taskRepository.save(task);
     }
