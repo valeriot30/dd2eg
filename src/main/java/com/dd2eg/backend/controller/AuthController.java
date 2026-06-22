@@ -50,12 +50,24 @@ public class AuthController {
                     .body(new Message("USER_NOT_FOUND", "User not found"));
         }
 
+        if (!userOptional.get().isEnabled()) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new Message("ACCOUNT_DISABLED", "This account has been suspended."));
+        }
+
         User user = userOptional.get();
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new Message("INVALID_CREDENTIALS", "Invalid credentials"));
+        }
+
+        if (!user.isEnabled()) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new Message("ACCOUNT_DISABLED", "This account has been suspended."));
         }
 
         String token = jwtService.generateToken(user);

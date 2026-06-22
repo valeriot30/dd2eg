@@ -8,6 +8,7 @@ import com.dd2eg.backend.utils.EventType;
 import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
+import com.dd2eg.backend.utils.UserType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.bson.Document;
@@ -206,5 +207,24 @@ public class UserService {
         dashboardData.setUniqueDevelopersInvolved(uniqueDevelopers.size());
 
         return dashboardData;
+    }
+
+    //TODO MAKE this general, so take a user dto as input and update all the fields
+
+    /**
+     * Ban a user, this function can be used later to update other informations
+     * @param userId
+     * @param isEnabled
+     */
+    public void updateUserStatus(String userId, boolean isEnabled) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        if (user.getUserType() == UserType.ADMIN) {
+            throw new RuntimeException("Cannot alter the status of an administrator");
+        }
+
+        user.setEnabled(isEnabled);
+        userRepository.save(user);
     }
 }

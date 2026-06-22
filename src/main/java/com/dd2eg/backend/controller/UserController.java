@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,6 +76,50 @@ public class UserController {
             return ResponseEntity.ok(updatedUser);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Ban a user",
+            description = "Disables a user account. Accessible only by administrators."
+    )
+    @ApiResponse(responseCode = "200", description = "User banned successfully")
+    @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PutMapping("/users/{id}/ban")
+    public ResponseEntity<?> banUser(@PathVariable String id, @AuthenticationPrincipal User currentUser) {
+        try {
+
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+            }
+
+            if(currentUser.getUserType() != UserType.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            userService.updateUserStatus(id, false);
+            return ResponseEntity.ok("User has been successfully banned.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Unban a user",
+            description = "Re-enables a suspended user account. Accessible only by administrators."
+    )
+    @ApiResponse(responseCode = "200", description = "User unbanned successfully")
+    @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @PutMapping("/users/{id}/unban")
+    public ResponseEntity<?> unbanUser(@PathVariable String id) {
+        try {
+            userService.updateUserStatus(id, true);
+            return ResponseEntity.ok("User has been successfully unbanned.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 

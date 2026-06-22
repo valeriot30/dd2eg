@@ -41,6 +41,8 @@ public class User implements UserDetails {
 
     private List<Skill> skills;
 
+    private boolean enabled = true;
+
     @DBRef
     private List<Project> ownedProjects = new ArrayList<>();
 
@@ -71,6 +73,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return this.enabled;
     }
 }
