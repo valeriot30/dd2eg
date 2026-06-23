@@ -11,5 +11,5 @@ public class CreateProjectDTO
 {
     private String name;
     private String description;
-    private List<String> tags;
+    private List<String> interestAreas;
 }

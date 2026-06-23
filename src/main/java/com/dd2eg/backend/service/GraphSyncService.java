@@ -250,9 +250,9 @@ public class GraphSyncService {
         Object statusObj = payload.get("status");
         String status = statusObj != null ? statusObj.toString().toLowerCase() : "open";
 
-        List<String> tags = payload.getList("tags", String.class);
+        List<String> interestAreas = payload.getList("interestAreas", String.class);
 
-        neo4jWriteRepository.createProject(projectId, creatorId, status, tags);
+        neo4jWriteRepository.createProject(projectId, creatorId, status, interestAreas);
     }
 
     private void processAddTask(Document payload) {

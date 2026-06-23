@@ -1,5 +1,6 @@
 package com.dd2eg.backend.controller;
 
+import com.dd2eg.backend.DTO.CreateDevReportDTO;
 import com.dd2eg.backend.model.User;
 import com.dd2eg.backend.service.UserService;
 import com.dd2eg.backend.utils.UserType;
@@ -120,6 +121,27 @@ public class UserController {
             return ResponseEntity.ok("User has been successfully unbanned.");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Report a developer",
+            description = "Creates a developer report from the authenticated enterprise"
+    )
+    @ApiResponse(responseCode = "200", description = "Report created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request or target user")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @ApiResponse(responseCode = "403", description = "Forbidden - Requires ENTERPRISE role")
+    @PreAuthorize("hasAuthority('ENTERPRISE')")
+    @PostMapping("/users/{id}/reports")
+    public ResponseEntity<?> createDevReport(
+            @PathVariable String id,
+            @RequestBody CreateDevReportDTO request,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            return ResponseEntity.ok(userService.createDevReport(id, request, currentUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

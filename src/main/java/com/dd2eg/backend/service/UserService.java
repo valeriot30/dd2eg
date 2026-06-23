@@ -2,6 +2,7 @@ package com.dd2eg.backend.service;
 
 import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
+import com.dd2eg.backend.DTO.CreateDevReportDTO;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
 import com.dd2eg.backend.utils.EventType;
@@ -226,5 +227,45 @@ public class UserService {
 
         user.setEnabled(isEnabled);
         userRepository.save(user);
+    }
+
+    public DevReport createDevReport(String developerId, CreateDevReportDTO request, User reportingEnterprise) {
+        if (reportingEnterprise == null) {
+            throw new RuntimeException("Authenticated enterprise is required");
+        }
+
+        if (reportingEnterprise.getUserType() != UserType.ENTERPRISE) {
+            throw new RuntimeException("Only enterprises can report developers");
+        }
+
+        if (request == null || request.getComment() == null || request.getComment().isBlank()) {
+            throw new RuntimeException("Report comment is required");
+        }
+
+        User developer = userRepository.findById(developerId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + developerId));
+
+        if (developer.getUserType() != UserType.DEVELOPER) {
+            throw new RuntimeException("Reports can only be created for developers");
+        }
+
+        if (developer.getDeveloperInfo() == null) {
+            developer.setDeveloperInfo(new DeveloperInfo());
+        }
+
+        if (developer.getDeveloperInfo().getDevReports() == null) {
+            developer.getDeveloperInfo().setDevReports(new ArrayList<>());
+        }
+
+        DevReport report = new DevReport();
+        report.setReportingEnterpriseId(reportingEnterprise.getId());
+        report.setReportingEnterpriseName(reportingEnterprise.getUsername());
+        report.setReportingEnterpriseProfilePic(reportingEnterprise.getProfilePic());
+        report.setComment(request.getComment());
+
+        developer.getDeveloperInfo().getDevReports().add(report);
+        userRepository.save(developer);
+
+        return report;
     }
 }

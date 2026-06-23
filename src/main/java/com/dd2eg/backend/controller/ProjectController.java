@@ -75,20 +75,20 @@ public class ProjectController {
     }
 
     /**
-     * Filter projects by tags
-     * URL: GET /api/projects/filter?tags=react,spring,mongodb
-     * @param tags the tags provided by the frontend
-     * @return a list of projects matching the tags
+     * Filter projects by interest areas
+     * URL: GET /api/projects/filter?interestAreas=react,spring,mongodb
+     * @param interestAreas the interest areas provided by the frontend
+     * @return a list of projects matching the interest areas
      */
     @GetMapping("/filter")
     @Operation(
-            summary = "Filter projects by tags",
-            description = "Returns projects that match one or more tags"
+            summary = "Filter projects by interest areas",
+            description = "Returns projects that match one or more interest areas"
     )
     public ResponseEntity<List<Project>> filterProjects(
-            @RequestParam(name = "tags", required = false) List<String> tags) {
+            @RequestParam(name = "interestAreas", required = false) List<String> interestAreas) {
 
-        List<Project> filteredProjects = projectService.filterProjectsByTags(tags);
+        List<Project> filteredProjects = projectService.filterProjectsByInterestAreas(interestAreas);
 
         return ResponseEntity.ok(filteredProjects);
     }

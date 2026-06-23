@@ -60,7 +60,7 @@ public class ProjectService {
         newProject.setName(project.getName());
         newProject.setCreatorId(currentUser.getId());
         newProject.setDescription(project.getDescription());
-        newProject.setTags(project.getTags());
+        newProject.setInterestAreas(project.getInterestAreas());
 
         if (newProject.getStatus() == null) {
             newProject.setStatus(ProjectStatus.OPEN);
@@ -87,7 +87,7 @@ public class ProjectService {
         document.put("projectId", savedProject.getId());
         document.put("creatorId", currentUser.getId());
         document.put("status", savedProject.getStatus().name());
-        document.put("tags", project.getTags());
+        document.put("interestAreas", project.getInterestAreas());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
@@ -236,18 +236,18 @@ public class ProjectService {
     }
 
     /**
-     * Filter projects by a list of tags
+     * Filter projects by a list of interest areas
      *
-     * @param tags list of tags to filter by
+     * @param interestAreas list of interest areas to filter by
      * @return list of matching projects
      */
-    public List<Project> filterProjectsByTags(List<String> tags) {
+    public List<Project> filterProjectsByInterestAreas(List<String> interestAreas) {
 
-        if (tags == null || tags.isEmpty()) {
+        if (interestAreas == null || interestAreas.isEmpty()) {
             return projectRepository.findAll();
         }
 
-        return projectRepository.findByTagsIn(tags);
+        return projectRepository.findByInterestAreasIn(interestAreas);
     }
 
 
