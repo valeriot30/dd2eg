@@ -145,6 +145,23 @@ public class UserController {
         }
     }
 
+    @Operation(
+            summary = "Get reported developers",
+            description = "Returns developers whose report count is above the requested threshold, ordered by report count descending"
+    )
+    @ApiResponse(responseCode = "200", description = "Reported developers retrieved successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid threshold")
+    @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/admin/users/reports")
+    public ResponseEntity<?> getReportedDevelopers(@RequestParam int threshold) {
+        if (threshold < 0) {
+            return ResponseEntity.badRequest().body("Threshold must be greater than or equal to zero");
+        }
+
+        return ResponseEntity.ok(userService.getReportedDevelopersAboveThreshold(threshold));
+    }
+
 
     @Operation(
             summary = "Get developer dashboard",

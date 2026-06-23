@@ -3,6 +3,7 @@ package com.dd2eg.backend.service;
 import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
 import com.dd2eg.backend.DTO.CreateDevReportDTO;
+import com.dd2eg.backend.DTO.ReportedDeveloperDTO;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
 import com.dd2eg.backend.utils.EventType;
@@ -264,8 +265,28 @@ public class UserService {
         report.setComment(request.getComment());
 
         developer.getDeveloperInfo().getDevReports().add(report);
+        developer.getDeveloperInfo().setNumReports(developer.getDeveloperInfo().getDevReports().size());
         userRepository.save(developer);
 
         return report;
+    }
+
+    public List<ReportedDeveloperDTO> getReportedDevelopersAboveThreshold(int threshold) {
+        return userRepository.findAll().stream()
+                .filter(user -> user.getUserType() == UserType.DEVELOPER)
+                .filter(user -> user.getDeveloperInfo() != null)
+                .filter(user -> user.getDeveloperInfo().getNumReports() > threshold)
+                .sorted((first, second) -> Integer.compare(
+                        second.getDeveloperInfo().getNumReports(),
+                        first.getDeveloperInfo().getNumReports()
+                ))
+                .map(user -> new ReportedDeveloperDTO(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getProfilePic(),
+                        user.getDeveloperInfo().getRating(),
+                        user.getDeveloperInfo().getNumReports()
+                ))
+                .toList();
     }
 }

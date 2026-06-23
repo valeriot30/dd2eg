@@ -13,5 +13,7 @@ import java.util.List;
 public class DeveloperInfo {
     private double rating = 0.0;
 
+    private int numReports = 0;
+
     private List<DevReport> devReports = new ArrayList<>();
 }
