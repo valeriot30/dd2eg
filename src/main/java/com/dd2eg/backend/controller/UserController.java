@@ -162,6 +162,23 @@ public class UserController {
         return ResponseEntity.ok(userService.getReportedDevelopersAboveThreshold(threshold));
     }
 
+    @Operation(
+            summary = "Get developer reports",
+            description = "Returns all reports created for the specified developer. Accessible only by administrators."
+    )
+    @ApiResponse(responseCode = "200", description = "Developer reports retrieved successfully")
+    @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    @ApiResponse(responseCode = "404", description = "Developer not found")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/admin/users/{id}/reports")
+    public ResponseEntity<?> getDevReportsByDeveloperId(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(userService.getDevReportsByDeveloperId(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
 
     @Operation(
             summary = "Get developer dashboard",

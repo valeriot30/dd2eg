@@ -289,4 +289,19 @@ public class UserService {
                 ))
                 .toList();
     }
+
+    public List<DevReport> getDevReportsByDeveloperId(String developerId) {
+        User developer = userRepository.findById(developerId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + developerId));
+
+        if (developer.getUserType() != UserType.DEVELOPER) {
+            throw new RuntimeException("Reports can only be listed for developers");
+        }
+
+        if (developer.getDeveloperInfo() == null || developer.getDeveloperInfo().getDevReports() == null) {
+            return List.of();
+        }
+
+        return developer.getDeveloperInfo().getDevReports();
+    }
 }
