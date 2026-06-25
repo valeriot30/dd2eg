@@ -3,6 +3,7 @@ package com.dd2eg.backend.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/tasks/*/fund").hasAuthority("ENTERPRISE")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/users/*/reports").hasAuthority("ENTERPRISE")
+                        .requestMatchers(HttpMethod.POST, "/api/projects/*/reports").authenticated()
                         .requestMatchers("/api/users/*/ban").hasAuthority("ADMIN")
                         .requestMatchers("/api/users/*/unban").hasAuthority("ADMIN")
 

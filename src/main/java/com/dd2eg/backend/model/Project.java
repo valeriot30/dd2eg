@@ -45,6 +45,8 @@ public class Project {
 
     private Integer scamReports;
 
+    private List<ProjectScamReport> scamReportList = new ArrayList<>();
+
     private String creatorId;
 
     public List<String> contributors = new ArrayList<>(); // only ids of contributors

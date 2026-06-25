@@ -1,5 +1,6 @@
 package com.dd2eg.backend.controller;
 
+import com.dd2eg.backend.DTO.CreateProjectScamReportDTO;
 import com.dd2eg.backend.DTO.CreateProjectDTO;
 import com.dd2eg.backend.DTO.ProjectDTO;
 import com.dd2eg.backend.model.Project;
@@ -43,6 +44,25 @@ public class ProjectController {
     public Project createProject(@RequestBody CreateProjectDTO project, @AuthenticationPrincipal User currentUser) {
         log.info("Creating new project: {}", project.getName());
         return projectService.createProject(project, currentUser);
+    }
+
+    @Operation(
+            summary = "Report a project",
+            description = "Creates a scam report for a project from the authenticated user"
+    )
+    @ApiResponse(responseCode = "200", description = "Report created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request or project")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PostMapping("/{projectId}/reports")
+    public ResponseEntity<?> createProjectScamReport(
+            @PathVariable String projectId,
+            @RequestBody CreateProjectScamReportDTO request,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            return ResponseEntity.ok(projectService.createProjectScamReport(projectId, request, currentUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @Operation(
