@@ -40,10 +40,7 @@ public class AnomalyDetectionService {
         log.info("[AnomalyDetection] Running detection for Enterprise: {}", enterpriseId);
         List<CrossEnterpriseAnomalyDTO> crossAnomalies = neo4jRepo.detectCrossEnterpriseAnomaliesForEnterprise(enterpriseId);
         List<DeveloperEnterpriseAnomalyDTO> devAnomalies = neo4jRepo.detectDeveloperEnterpriseAnomaliesForEnterprise(enterpriseId);
-        AnomalyScanResultDTO result = new AnomalyScanResultDTO();
-        result.setCrossEnterpriseAnomalies(crossAnomalies);
-        result.setDeveloperEnterpriseAnomalies(devAnomalies);
-        return result;
+        return new AnomalyScanResultDTO(crossAnomalies, devAnomalies);
     }
 
     /**
@@ -56,9 +53,6 @@ public class AnomalyDetectionService {
         log.info("[AnomalyDetection] Running batch detection for all enterprises...");
         List<CrossEnterpriseAnomalyDTO> crossAnomalies = neo4jRepo.detectCrossEnterpriseAnomalies();
         List<DeveloperEnterpriseAnomalyDTO> devAnomalies = neo4jRepo.detectDeveloperEnterpriseAnomalies();
-        AnomalyScanResultDTO result = new AnomalyScanResultDTO();
-        result.setCrossEnterpriseAnomalies(crossAnomalies);
-        result.setDeveloperEnterpriseAnomalies(devAnomalies);
-        return result;
+        return new AnomalyScanResultDTO(crossAnomalies, devAnomalies);
     }
 }

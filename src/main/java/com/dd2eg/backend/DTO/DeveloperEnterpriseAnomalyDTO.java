@@ -1,7 +1,7 @@
 package com.dd2eg.backend.DTO;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import java.util.List;
 
 /**
@@ -9,12 +9,12 @@ import java.util.List;
  * Identifica shell projects creati da un Developer per farsi finanziare
  * task fittizi da una Enterprise complice, dove nessun altro developer lavora.
  */
-@Setter
 @Getter
+@AllArgsConstructor
 public class DeveloperEnterpriseAnomalyDTO {
-    private String fraudsterDeveloperId;
-    private String complicitEnterpriseId;
-    private String shellProjectId;
-    private long fakeTasksCompleted;
-    private List<String> compromisedTaskIds;
+    private final String fraudsterDeveloperId;
+    private final String complicitEnterpriseId;
+    private final String shellProjectId;
+    private final long fakeTasksCompleted;
+    private final List<String> compromisedTaskIds;
 }

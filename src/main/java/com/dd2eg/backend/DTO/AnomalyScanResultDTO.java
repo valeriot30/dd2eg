@@ -1,17 +1,19 @@
 package com.dd2eg.backend.DTO;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import java.util.List;
 
 /**
  * Risultato aggregato della Anomaly Detection.
+ * Aggrega i risultati delle due tipologie di anomalie (Cross-Enterprise e Developer-Enterprise)
+ * e fornisce un conteggio totale tramite il metodo getTotalAnomalies().
  */
-@Setter
 @Getter
+@AllArgsConstructor
 public class AnomalyScanResultDTO {
-    private List<CrossEnterpriseAnomalyDTO> crossEnterpriseAnomalies;
-    private List<DeveloperEnterpriseAnomalyDTO> developerEnterpriseAnomalies;
+    private final List<CrossEnterpriseAnomalyDTO> crossEnterpriseAnomalies;
+    private final List<DeveloperEnterpriseAnomalyDTO> developerEnterpriseAnomalies;
 
     public int getTotalAnomalies() {
         int crossCount = crossEnterpriseAnomalies != null ? crossEnterpriseAnomalies.size() : 0;
