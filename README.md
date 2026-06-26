@@ -3,6 +3,7 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-6.x+-green.svg?style=flat-square&logo=mongodb)](https://www.mongodb.com/)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.x+-blue.svg?style=flat-square&logo=neo4j)](https://neo4j.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+
 **Dev2Enterprise** is an innovative micro-sponsorship platform designed to bridge the gap between open-source developers and corporate sponsors. The system enables enterprises to fund specific tasks, bug fixes, or features in open-source projects via targeted bounties. Developers contribute code via targeted commits, collaborate with the community, and earn rewards while building their reputations.
 Dev2Enterprise is powered by a high-performance **polyglot database architecture** using **MongoDB** (as the system of record) and **Neo4j** (as the graph analytical engine) to deliver real-time developer recommendations and robust cross-enterprise fraud detection.
 ---
