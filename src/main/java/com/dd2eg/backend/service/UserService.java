@@ -2,12 +2,15 @@ package com.dd2eg.backend.service;
 
 import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
+import com.dd2eg.backend.DTO.CreateDevReportDTO;
+import com.dd2eg.backend.DTO.ReportedDeveloperDTO;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
 import com.dd2eg.backend.utils.EventType;
 import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
+import com.dd2eg.backend.utils.UserType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.bson.Document;
@@ -206,5 +209,99 @@ public class UserService {
         dashboardData.setUniqueDevelopersInvolved(uniqueDevelopers.size());
 
         return dashboardData;
+    }
+
+    //TODO MAKE this general, so take a user dto as input and update all the fields
+
+    /**
+     * Ban a user, this function can be used later to update other informations
+     * @param userId
+     * @param isEnabled
+     */
+    public void updateUserStatus(String userId, boolean isEnabled) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        if (user.getUserType() == UserType.ADMIN) {
+            throw new RuntimeException("Cannot alter the status of an administrator");
+        }
+
+        user.setEnabled(isEnabled);
+        userRepository.save(user);
+    }
+
+    public DevReport createDevReport(String developerId, CreateDevReportDTO request, User reportingEnterprise) {
+        if (reportingEnterprise == null) {
+            throw new RuntimeException("Authenticated enterprise is required");
+        }
+
+        if (reportingEnterprise.getUserType() != UserType.ENTERPRISE) {
+            throw new RuntimeException("Only enterprises can report developers");
+        }
+
+        if (request == null || request.getComment() == null || request.getComment().isBlank()) {
+            throw new RuntimeException("Report comment is required");
+        }
+
+        User developer = userRepository.findById(developerId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + developerId));
+
+        if (developer.getUserType() != UserType.DEVELOPER) {
+            throw new RuntimeException("Reports can only be created for developers");
+        }
+
+        if (developer.getDeveloperInfo() == null) {
+            developer.setDeveloperInfo(new DeveloperInfo());
+        }
+
+        if (developer.getDeveloperInfo().getDevReports() == null) {
+            developer.getDeveloperInfo().setDevReports(new ArrayList<>());
+        }
+
+        DevReport report = new DevReport();
+        report.setReportingEnterpriseId(reportingEnterprise.getId());
+        report.setReportingEnterpriseName(reportingEnterprise.getUsername());
+        report.setReportingEnterpriseProfilePic(reportingEnterprise.getProfilePic());
+        report.setComment(request.getComment());
+
+        developer.getDeveloperInfo().getDevReports().add(report);
+        developer.getDeveloperInfo().setNumReports(developer.getDeveloperInfo().getDevReports().size());
+        userRepository.save(developer);
+
+        return report;
+    }
+
+    public List<ReportedDeveloperDTO> getReportedDevelopersAboveThreshold(int threshold) {
+        return userRepository.findAll().stream()
+                .filter(user -> user.getUserType() == UserType.DEVELOPER)
+                .filter(user -> user.getDeveloperInfo() != null)
+                .filter(user -> user.getDeveloperInfo().getNumReports() > threshold)
+                .sorted((first, second) -> Integer.compare(
+                        second.getDeveloperInfo().getNumReports(),
+                        first.getDeveloperInfo().getNumReports()
+                ))
+                .map(user -> new ReportedDeveloperDTO(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getProfilePic(),
+                        user.getDeveloperInfo().getRating(),
+                        user.getDeveloperInfo().getNumReports()
+                ))
+                .toList();
+    }
+
+    public List<DevReport> getDevReportsByDeveloperId(String developerId) {
+        User developer = userRepository.findById(developerId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + developerId));
+
+        if (developer.getUserType() != UserType.DEVELOPER) {
+            throw new RuntimeException("Reports can only be listed for developers");
+        }
+
+        if (developer.getDeveloperInfo() == null || developer.getDeveloperInfo().getDevReports() == null) {
+            return List.of();
+        }
+
+        return developer.getDeveloperInfo().getDevReports();
     }
 }

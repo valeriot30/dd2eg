@@ -2,6 +2,7 @@ package com.dd2eg.backend.service;
 
 import com.dd2eg.backend.DTO.*;
 import com.dd2eg.backend.model.Project;
+import com.dd2eg.backend.model.ProjectScamReport;
 import com.dd2eg.backend.repository.ProjectMongoRepository;
 import com.dd2eg.backend.utils.ProjectStatus;
 import com.dd2eg.backend.model.Event;
@@ -21,6 +22,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.ArrayList;
 
 @AllArgsConstructor
 @Service
@@ -60,7 +62,7 @@ public class ProjectService {
         newProject.setName(project.getName());
         newProject.setCreatorId(currentUser.getId());
         newProject.setDescription(project.getDescription());
-        newProject.setTags(project.getTags());
+        newProject.setInterestAreas(project.getInterestAreas());
 
         if (newProject.getStatus() == null) {
             newProject.setStatus(ProjectStatus.OPEN);
@@ -87,7 +89,7 @@ public class ProjectService {
         document.put("projectId", savedProject.getId());
         document.put("creatorId", currentUser.getId());
         document.put("status", savedProject.getStatus().name());
-        document.put("tags", project.getTags());
+        document.put("interestAreas", project.getInterestAreas());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
@@ -236,18 +238,87 @@ public class ProjectService {
     }
 
     /**
-     * Filter projects by a list of tags
+     * Filter projects by a list of interest areas
      *
-     * @param tags list of tags to filter by
+     * @param interestAreas list of interest areas to filter by
      * @return list of matching projects
      */
-    public List<Project> filterProjectsByTags(List<String> tags) {
+    public List<Project> filterProjectsByInterestAreas(List<String> interestAreas) {
 
-        if (tags == null || tags.isEmpty()) {
+        if (interestAreas == null || interestAreas.isEmpty()) {
             return projectRepository.findAll();
         }
 
-        return projectRepository.findByTagsIn(tags);
+        return projectRepository.findByInterestAreasIn(interestAreas);
+    }
+
+    public ProjectScamReport createProjectScamReport(String projectId, CreateProjectScamReportDTO request, User reportingUser) {
+        if (reportingUser == null) {
+            throw new RuntimeException("Authenticated user is required to report a project");
+        }
+
+        if (request == null || request.getComment() == null || request.getComment().isBlank()) {
+            throw new RuntimeException("Report comment is required");
+        }
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+        if (project.getScamReportList() == null) {
+            project.setScamReportList(new ArrayList<>());
+        }
+
+        ProjectScamReport report = new ProjectScamReport();
+        report.setReportingUserId(reportingUser.getId());
+        report.setReportingUsername(reportingUser.getUsername());
+        report.setReportingUserProfilePic(reportingUser.getProfilePic());
+        report.setReportingUserType(reportingUser.getUserType());
+        report.setComment(request.getComment());
+
+        project.getScamReportList().add(report);
+        project.setScamReports(project.getScamReportList().size());
+        projectRepository.save(project);
+
+        return report;
+    }
+
+    public List<ReportedProjectDTO> getReportedProjectsAboveThreshold(int threshold) {
+        return projectRepository.findAll().stream()
+                .filter(project -> getProjectReportCount(project) > threshold)
+                .sorted((first, second) -> Integer.compare(
+                        getProjectReportCount(second),
+                        getProjectReportCount(first)
+                ))
+                .map(project -> new ReportedProjectDTO(
+                        project.getId(),
+                        project.getName(),
+                        project.getDescription(),
+                        getProjectReportCount(project)
+                ))
+                .toList();
+    }
+
+    public List<ProjectScamReport> getProjectScamReports(String projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+        if (project.getScamReportList() == null) {
+            return List.of();
+        }
+
+        return project.getScamReportList();
+    }
+
+    private int getProjectReportCount(Project project) {
+        if (project.getScamReports() != null) {
+            return project.getScamReports();
+        }
+
+        if (project.getScamReportList() == null) {
+            return 0;
+        }
+
+        return project.getScamReportList().size();
     }
 
 

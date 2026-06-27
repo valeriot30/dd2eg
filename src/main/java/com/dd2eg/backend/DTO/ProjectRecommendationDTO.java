@@ -7,14 +7,14 @@ import java.util.List;
 /**
  * DTO per i risultati della Query 1 — Project Recommendation per Developer.
  * Contiene l'ID del progetto raccomandato (riferimento a MongoDB),
- * il conteggio dei tag condivisi, i task aperti compatibili e le skill
+ * il conteggio delle interest area condivise, i task aperti compatibili e le skill
  * matchate.
  */
 @Getter
 @AllArgsConstructor
 public class ProjectRecommendationDTO {
     private final String recommendedProjectId; // ID del progetto raccomandato
-    private final long sharedTagCount; // numero di tag in comune
+    private final long sharedInterestAreaCount; // numero di interest area in comune
     private final long openMatchingTasks; // numero di task aperti compatibili
     private final List<String> matchingSkills; // lista delle skill matchate
 }

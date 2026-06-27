@@ -2,6 +2,7 @@ package com.dd2eg.backend.controller;
 
 import com.dd2eg.backend.DTO.LoginRequestDTO;
 import com.dd2eg.backend.DTO.SignupRequestDTO;
+import com.dd2eg.backend.model.Skill;
 import com.dd2eg.backend.service.TokenService;
 import com.dd2eg.backend.model.User;
 import com.dd2eg.backend.service.UserService;
@@ -50,12 +51,24 @@ public class AuthController {
                     .body(new Message("USER_NOT_FOUND", "User not found"));
         }
 
+        if (!userOptional.get().isEnabled()) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new Message("ACCOUNT_DISABLED", "This account has been suspended."));
+        }
+
         User user = userOptional.get();
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new Message("INVALID_CREDENTIALS", "Invalid credentials"));
+        }
+
+        if (!user.isEnabled()) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new Message("ACCOUNT_DISABLED", "This account has been suspended."));
         }
 
         String token = jwtService.generateToken(user);
@@ -104,14 +117,23 @@ public class AuthController {
         }
 
         User user = new User();
+
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
         user.setUserType(
-                request.getUserType() != null
-                        ? request.getUserType()
+                request.getRole() != null
+                        ? request.getRole()
                         : UserType.DEVELOPER
         );
+
+        if(request.getSkills() != null) {
+            for (String skill : request.getSkills()) {
+                Skill skillObj = new Skill();
+                skillObj.setName(skill);
+                user.getSkills().add(skillObj);
+            }
+        }
 
         User savedUser = userService.createUser(user);
 

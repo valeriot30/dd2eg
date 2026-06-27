@@ -11,7 +11,7 @@ import java.util.List;
 
 public interface ProjectMongoRepository extends MongoRepository<Project, String> {
     List<Project> findAllBy(TextCriteria textCriteria);
-    List<Project> findByTagsIn(List<String> tags);
+    List<Project> findByInterestAreasIn(List<String> interestAreas);
     @Aggregation(pipeline = {
             "{ $unwind: '$contributors' }",
             "{ $group: { _id: '$contributors', projectCount: { $sum: 1 } } }",

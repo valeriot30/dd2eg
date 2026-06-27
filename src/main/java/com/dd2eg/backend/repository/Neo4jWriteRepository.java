@@ -89,13 +89,13 @@ public class Neo4jWriteRepository {
     }
 
     /**
-     * ADD_PROJECT — Creates a Project node with its associated Tags.
+     * ADD_PROJECT — Creates a Project node with its associated InterestAreas.
      *
      * Resulting graph:
      * (:Developer|Enterprise {id})-[:CREATED]->(:Project {id, status})
-     * (:Project {id, status})-[:CATEGORIZED_BY]->(:Tag {name})
+     * (:Project {id, status})-[:CATEGORIZED_BY]->(:InterestArea {name})
      */
-    public void createProject(String projectId, String creatorId, String status, List<String> tags) {
+    public void createProject(String projectId, String creatorId, String status, List<String> interestAreas) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
                 // Create the project node
@@ -113,22 +113,22 @@ public class Neo4jWriteRepository {
                             Map.of("creatorId", creatorId, "projectId", projectId));
                 }
 
-                // Create tags and CATEGORIZED_BY relationships
-                if (tags != null) {
-                    for (String tagName : tags) {
+                // Create interest areas and CATEGORIZED_BY relationships
+                if (interestAreas != null) {
+                    for (String interestAreaName : interestAreas) {
                         tx.run("""
                                 MATCH (p:Project {id: $projectId})
-                                MERGE (t:Tag {name: $tagName})
-                                MERGE (p)-[:CATEGORIZED_BY]->(t)
+                                MERGE (ia:InterestArea {name: $interestAreaName})
+                                MERGE (p)-[:CATEGORIZED_BY]->(ia)
                                 """,
-                                Map.of("projectId", projectId, "tagName", tagName));
+                                Map.of("projectId", projectId, "interestAreaName", interestAreaName));
                     }
                 }
                 return null;
             });
         }
-        log.debug("[Neo4jWrite] Created Project node: {} by creator: {} with {} tags", projectId,
-                creatorId, tags != null ? tags.size() : 0);
+        log.debug("[Neo4jWrite] Created Project node: {} by creator: {} with {} interest areas", projectId,
+                creatorId, interestAreas != null ? interestAreas.size() : 0);
     }
 
     /**

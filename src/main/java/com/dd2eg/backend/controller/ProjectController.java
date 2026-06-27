@@ -1,5 +1,6 @@
 package com.dd2eg.backend.controller;
 
+import com.dd2eg.backend.DTO.CreateProjectScamReportDTO;
 import com.dd2eg.backend.DTO.CreateProjectDTO;
 import com.dd2eg.backend.DTO.ProjectDTO;
 import com.dd2eg.backend.model.Project;
@@ -46,6 +47,25 @@ public class ProjectController {
     }
 
     @Operation(
+            summary = "Report a project",
+            description = "Creates a scam report for a project from the authenticated user"
+    )
+    @ApiResponse(responseCode = "200", description = "Report created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request or project")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PostMapping("/{projectId}/reports")
+    public ResponseEntity<?> createProjectScamReport(
+            @PathVariable String projectId,
+            @RequestBody CreateProjectScamReportDTO request,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            return ResponseEntity.ok(projectService.createProjectScamReport(projectId, request, currentUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(
             summary = "Get project by ID",
             description = "Returns a single project based on its unique ID"
     )
@@ -75,20 +95,20 @@ public class ProjectController {
     }
 
     /**
-     * Filter projects by tags
-     * URL: GET /api/projects/filter?tags=react,spring,mongodb
-     * @param tags the tags provided by the frontend
-     * @return a list of projects matching the tags
+     * Filter projects by interest areas
+     * URL: GET /api/projects/filter?interestAreas=react,spring,mongodb
+     * @param interestAreas the interest areas provided by the frontend
+     * @return a list of projects matching the interest areas
      */
     @GetMapping("/filter")
     @Operation(
-            summary = "Filter projects by tags",
-            description = "Returns projects that match one or more tags"
+            summary = "Filter projects by interest areas",
+            description = "Returns projects that match one or more interest areas"
     )
     public ResponseEntity<List<Project>> filterProjects(
-            @RequestParam(name = "tags", required = false) List<String> tags) {
+            @RequestParam(name = "interestAreas", required = false) List<String> interestAreas) {
 
-        List<Project> filteredProjects = projectService.filterProjectsByTags(tags);
+        List<Project> filteredProjects = projectService.filterProjectsByInterestAreas(interestAreas);
 
         return ResponseEntity.ok(filteredProjects);
     }
