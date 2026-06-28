@@ -309,6 +309,17 @@ public class ProjectService {
         return project.getScamReportList();
     }
 
+    @Transactional
+    public void deleteProject(String projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+        Query taskQuery = new Query(Criteria.where("projectId").is(project.getId()));
+        mongoTemplate.remove(taskQuery, "tasks");
+
+        projectRepository.delete(project);
+    }
+
     private int getProjectReportCount(Project project) {
         if (project.getScamReports() != null) {
             return project.getScamReports();

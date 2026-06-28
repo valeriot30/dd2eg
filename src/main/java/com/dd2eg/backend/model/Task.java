@@ -69,7 +69,7 @@ public class Task {
 
         for (int i = 0; i < commits.size(); i++) {
 
-            if (commits.get(i).getHash() == null) {
+            if (commits.get(i) == null || commits.get(i).getHash() == null) {
                 return i;
             }
         }
