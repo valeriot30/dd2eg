@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  node1:
+    build:
+      context: .
+      dockerfile: docker/mongo-node/Dockerfile
+    container_name: node1
+    ports:
+      - "27017:27017" # Mongos
+      - "27018:27018" # Shard
+      - "27019:27019" # Config
+    networks:
+      - mongo-network
+    volumes:
+      - node1-configdb:/data/configdb
+      - node1-db:/data/db
+    restart: unless-stopped
+
+  node2:
+    build:
+      context: .
+      dockerfile: docker/mongo-node/Dockerfile
+    container_name: node2
+    networks:
+      - mongo-network
+    volumes:
+      - node2-configdb:/data/configdb
+      - node2-db:/data/db
+    restart: unless-stopped
+
+  node3:
+    build:
+      context: .
+      dockerfile: docker/mongo-neo4j-node/Dockerfile
+    container_name: node3
+    ports:
+      - "7474:7474" # Neo4j HTTP
+      - "7687:7687" # Neo4j Bolt
+    networks:
+      - mongo-network
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - node3-configdb:/data/configdb
+      - node3-db:/data/db
+      - node3-neo4j-data:/var/lib/neo4j/data
+      - node3-neo4j-logs:/var/log/neo4j
+    restart: unless-stopped
+
+networks:
+  mongo-network:
+    driver: bridge
+
+volumes:
+  node1-configdb:
+  node1-db:
+  node2-configdb:
+  node2-db:
+  node3-configdb:
+  node3-db:
+  node3-neo4j-data:
+  node3-neo4j-logs:
