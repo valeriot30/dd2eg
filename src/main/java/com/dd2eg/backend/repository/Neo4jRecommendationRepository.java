@@ -54,7 +54,6 @@ public class Neo4jRecommendationRepository {
             MATCH (dev:Developer {id: $devId})-[:HAS_SKILL]->(knownSkill:Skill)
             CALL (knownSkill) {
               MATCH (knownSkill)<-[:REQUIRES_SKILL]-(t:Task {status: 'open'})
-              ORDER BY t.created_at DESC
               RETURN t LIMIT 100
             }
             MATCH (t)-[:REQUIRES_SKILL]->(recommended:Skill)
@@ -97,6 +96,13 @@ public class Neo4jRecommendationRepository {
                    count(DISTINCT openTask) AS AvailableTask
             ORDER BY SharedTagCount DESC, AvailableTask DESC
             LIMIT 10
+            """;
+
+    private static final String DEVELOPER_INTEREST_AREAS_QUERY = """
+            MATCH (dev:Developer {id: $devId})-[:WORK_ON]->(:Task)
+                  -[:BELONGS_TO]->(:Project)-[:CATEGORIZED_BY]->(tag:Tag)
+            RETURN DISTINCT tag.name AS InterestArea
+            ORDER BY InterestArea
             """;
 
     // --- NUOVE QUERY ANOMALY DETECTION ---
@@ -231,6 +237,19 @@ public class Neo4jRecommendationRepository {
                             record.get("AvailableTask").asLong()));
                 }
                 return recommendations;
+            });
+        }
+    }
+
+    public List<String> getDeveloperInterestAreas(String devId) {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(
+                        DEVELOPER_INTEREST_AREAS_QUERY,
+                        Map.of("devId", devId)
+                );
+
+                return result.list(record -> record.get("InterestArea").asString());
             });
         }
     }

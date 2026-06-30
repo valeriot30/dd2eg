@@ -57,21 +57,35 @@ class UserServiceTest {
     void getUserById_ShouldReturnUser_WhenExists() {
         User user = new User();
         user.setId("1");
+        user.setUsername("developer");
+
+        Skill skill = new Skill();
+        skill.setName("Java");
+        user.setSkills(List.of(skill));
+
         when(userRepository.findById("1")).thenReturn(Optional.of(user));
 
-        User result = userService.getUserById("1");
+        when(neo4jRepo.getDeveloperInterestAreas("1"))
+                .thenReturn(List.of("Backend", "MongoDB"));
+
+        UserProfileDTO result = userService.getUserById("1");
 
         assertNotNull(result);
         assertEquals("1", result.getId());
+        assertEquals("developer", result.getUsername());
+        assertEquals(List.of("Java"), result.getSkills());
+        assertEquals(List.of("Backend", "MongoDB"), result.getInterestAreas());
     }
 
     @Test
-    void getUserById_ShouldReturnNull_WhenNotExists() {
+    void getUserById_ShouldThrow_WhenNotExists() {
         when(userRepository.findById("1")).thenReturn(Optional.empty());
 
-        User result = userService.getUserById("1");
-
-        assertNull(result);
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> userService.getUserById("1")
+        );
+        assertEquals("User not found with id: 1", exception.getMessage());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.dd2eg.backend.controller;
 
 import com.dd2eg.backend.DTO.CreateDevReportDTO;
+import com.dd2eg.backend.DTO.UserProfileDTO;
 import com.dd2eg.backend.model.User;
 import com.dd2eg.backend.service.UserService;
 import com.dd2eg.backend.utils.UserType;
@@ -221,7 +222,7 @@ public class UserController {
     @GetMapping("/users/{id}")
     public ResponseEntity<?> getUserById(@PathVariable String id) {
         try {
-            User user = userService.getUserById(id);
+            UserProfileDTO user = userService.getUserById(id);
             return ResponseEntity.ok(user);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with id: " + id);
