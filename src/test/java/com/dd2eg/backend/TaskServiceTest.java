@@ -36,8 +36,6 @@ class TaskServiceTest {
     @Mock
     private ProjectMongoRepository projectRepository;
 
-    @Mock
-    private CommitMongoRepository commitRepository;
 
     @Mock
     private ProjectService projectService;
@@ -219,7 +217,6 @@ class TaskServiceTest {
         task.setProjectId("proj1");
 
         when(taskRepository.findById("task1")).thenReturn(Optional.of(task));
-        when(commitRepository.save(any(Commit.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(eventRepository.save(any(Event.class))).thenReturn(new Event());
         when(taskRepository.save(any(Task.class))).thenReturn(task);
 
@@ -229,12 +226,11 @@ class TaskServiceTest {
         assertEquals("hash123", result.getHash());
         assertEquals("Fixed issue", result.getComment());
         assertEquals(45, result.getNumLines());
-        assertEquals("task1", result.getTaskId());
-        assertEquals("proj1", result.getProjectId());
+        assertEquals("task1", task.getId());
+        assertEquals("proj1", task.getProjectId());
         assertEquals("dev1", result.getAuthorId());
         assertEquals("developer1", result.getAuthorUsername());
 
-        verify(commitRepository).save(any(Commit.class));
         verify(projectService).addContributorToProjectIfMissing("proj1", dev);
         verify(eventRepository).save(any(Event.class));
         verify(taskRepository).save(task);
