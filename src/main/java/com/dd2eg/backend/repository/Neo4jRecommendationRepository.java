@@ -54,7 +54,6 @@ public class Neo4jRecommendationRepository {
             MATCH (dev:Developer {id: $devId})-[:HAS_SKILL]->(knownSkill:Skill)
             CALL (knownSkill) {
               MATCH (knownSkill)<-[:REQUIRES_SKILL]-(t:Task {status: 'open'})
-              ORDER BY t.created_at DESC
               RETURN t LIMIT 100
             }
             MATCH (t)-[:REQUIRES_SKILL]->(recommended:Skill)
