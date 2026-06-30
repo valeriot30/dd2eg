@@ -10,6 +10,7 @@ import com.dd2eg.backend.utils.EventType;
 import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
+import com.dd2eg.backend.DTO.TopContributorDTO;
 import com.dd2eg.backend.utils.UserType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -163,7 +164,20 @@ public class UserService {
 
         stats.setTrendingProjects(dashboardProjects);
 
-        stats.setTopContributors(projectRepo.findTopContributors(10));
+        List<TopContributorDTO> topContributors = projectRepo.findTopContributors(10);
+        List<String> userIds = topContributors.stream()
+                .map(TopContributorDTO::getUsername)
+                .toList();
+        List<User> users = userRepository.findAllById(userIds);
+        Map<String, String> idToUsernameMap = users.stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        for (TopContributorDTO tc : topContributors) {
+            String username = idToUsernameMap.get(tc.getUsername());
+            if (username != null) {
+                tc.setUsername(username);
+            }
+        }
+        stats.setTopContributors(topContributors);
 
         List<SkillRecommendationDTO> skillRecs = neo4jRepo.getSkillRecommendations(userId);
 
