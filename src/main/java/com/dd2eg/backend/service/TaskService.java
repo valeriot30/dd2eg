@@ -121,8 +121,6 @@ public class TaskService {
         commit.setComment(dto.getComment());
         commit.setNumLines(dto.getNumLines());
 
-        commit.setTaskId(task.getId());
-        commit.setProjectId(task.getProjectId());
         commit.setAuthorId(currentUser.getId());
         commit.setAuthorUsername(currentUser.getUsername());
 

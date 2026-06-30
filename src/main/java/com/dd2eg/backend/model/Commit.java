@@ -11,10 +11,6 @@ public class Commit {
 
     private String hash;
 
-    private String taskId;
-
-    private String projectId;
-
     private String authorId;
 
     private String authorUsername;
