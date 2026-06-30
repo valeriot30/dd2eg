@@ -99,6 +99,13 @@ public class Neo4jRecommendationRepository {
             LIMIT 10
             """;
 
+    private static final String DEVELOPER_INTEREST_AREAS_QUERY = """
+            MATCH (dev:Developer {id: $devId})-[:WORK_ON]->(:Task)
+                  -[:BELONGS_TO]->(:Project)-[:CATEGORIZED_BY]->(tag:Tag)
+            RETURN DISTINCT tag.name AS InterestArea
+            ORDER BY InterestArea
+            """;
+
     // --- NUOVE QUERY ANOMALY DETECTION ---
 
     private static final String ANOMALY_DETECTION_CROSS_ENTERPRISE_QUERY = """
@@ -231,6 +238,19 @@ public class Neo4jRecommendationRepository {
                             record.get("AvailableTask").asLong()));
                 }
                 return recommendations;
+            });
+        }
+    }
+
+    public List<String> getDeveloperInterestAreas(String devId) {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(
+                        DEVELOPER_INTEREST_AREAS_QUERY,
+                        Map.of("devId", devId)
+                );
+
+                return result.list(record -> record.get("InterestArea").asString());
             });
         }
     }
