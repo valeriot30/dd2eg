@@ -88,14 +88,38 @@ public class Neo4jWriteRepository {
         log.debug("[Neo4jWrite] Updated skills for user: {}", userId);
     }
 
+    public void updateTaskSkills(String taskId, List<String> skillNames) {
+        try (Session session = driver.session(SessionConfig.defaultConfig())) {
+            session.executeWrite(tx -> {
+                // Delete existing relationships
+                tx.run("MATCH (t:Task {id: $taskId})-[r:REQUIRES_SKILL]->() DELETE r",
+                        Map.of("taskId", taskId));
+
+                // Create new skills and REQUIRES_SKILL relationships
+                if (skillNames != null) {
+                    for (String skillName : skillNames) {
+                        tx.run("""
+                                MATCH (t:Task {id: $taskId})
+                                MERGE (s:Skill {name: $skillName})
+                                MERGE (t)-[:REQUIRES_SKILL]->(s)
+                                """,
+                                Map.of("taskId", taskId, "skillName", skillName));
+                    }
+                }
+                return null;
+            });
+        }
+        log.debug("[Neo4jWrite] Updated skills for task: {}", taskId);
+    }
+
     /**
-     * ADD_PROJECT — Creates a Project node with its associated InterestAreas.
+     * ADD_PROJECT — Creates a Project node with its associated Tags.
      *
      * Resulting graph:
      * (:Developer|Enterprise {id})-[:CREATED]->(:Project {id, status})
-     * (:Project {id, status})-[:CATEGORIZED_BY]->(:InterestArea {name})
+     * (:Project {id, status})-[:CATEGORIZED_BY]->(:Tag {name})
      */
-    public void createProject(String projectId, String creatorId, String status, List<String> interestAreas) {
+    public void createProject(String projectId, String creatorId, String status, List<String> tags) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
                 // Create the project node
@@ -113,22 +137,22 @@ public class Neo4jWriteRepository {
                             Map.of("creatorId", creatorId, "projectId", projectId));
                 }
 
-                // Create interest areas and CATEGORIZED_BY relationships
-                if (interestAreas != null) {
-                    for (String interestAreaName : interestAreas) {
+                // Create tags and CATEGORIZED_BY relationships
+                if (tags != null) {
+                    for (String tagName : tags) {
                         tx.run("""
                                 MATCH (p:Project {id: $projectId})
-                                MERGE (ia:InterestArea {name: $interestAreaName})
-                                MERGE (p)-[:CATEGORIZED_BY]->(ia)
+                                MERGE (tag:Tag {name: $tagName})
+                                MERGE (p)-[:CATEGORIZED_BY]->(tag)
                                 """,
-                                Map.of("projectId", projectId, "interestAreaName", interestAreaName));
+                                Map.of("projectId", projectId, "tagName", tagName));
                     }
                 }
                 return null;
             });
         }
         log.debug("[Neo4jWrite] Created Project node: {} by creator: {} with {} interest areas", projectId,
-                creatorId, interestAreas != null ? interestAreas.size() : 0);
+                creatorId, tags != null ? tags.size() : 0);
     }
 
     /**
@@ -139,18 +163,18 @@ public class Neo4jWriteRepository {
      * (:Task {id, status})-[:BELONGS_TO]->(:Project {id})
      * (:Task {id})-[:REQUIRES_SKILL]->(:Skill {name})
      */
-    public void createTask(String taskId, String projectId, List<String> skills) {
+    public void createTask(String taskId, String projectId, List<String> skills, long priority) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
                 // Create the task node and link it to the project
                 tx.run("""
                         MERGE (t:Task {id: $taskId})
-                        SET t.status = 'open'
+                        SET t.status = 'open', t.priority = $priority
                         WITH t
                         MATCH (p:Project {id: $projectId})
                         MERGE (t)-[:BELONGS_TO]->(p)
                         """,
-                        Map.of("taskId", taskId, "projectId", projectId));
+                        Map.of("taskId", taskId, "projectId", projectId, "priority", priority));
 
                 // Create required skills and REQUIRES_SKILL relationships
                 if (skills != null) {

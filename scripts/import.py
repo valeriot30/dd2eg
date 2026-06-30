@@ -151,7 +151,7 @@ def import_system_data(limit=None):
         project_payload = {
             "name": project.get("projectName", "Unknown Project"),
             "description": f"Open Source Project imported from GitHub ({owner_username}/{project.get('projectName', '')}).",
-            "interestAreas": project.get("interestAreas", [])
+            "tags": project.get("tags", [])
         }
 
         print(f"📦 Importing Project: {project_payload['name']}...")

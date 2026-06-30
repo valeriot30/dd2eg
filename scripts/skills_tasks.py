@@ -2,6 +2,70 @@ import os
 import requests
 import time
 from dotenv import load_dotenv
+import re
+
+# Dizionario delle Skill con le relative espressioni regolari (keywords)
+SKILL_KEYWORDS = {
+    # ==========================
+    # LINGUAGGI DI PROGRAMMAZIONE
+    # ==========================
+    "Python": [r"\bpython\b", r"\bpip\b", r"\bdjango\b", r"\bflask\b", r"\bpytest\b"],
+    "JavaScript": [r"\bjavascript\b", r"\bjs\b", r"\bes6\b", r"\bnode\.?js\b", r"\bnpm\b"],
+    "TypeScript": [r"\btypescript\b", r"\bts\b"],
+    "Java": [r"\bjava\b", r"\bspring\b", r"\bmaven\b", r"\bgradle\b"],
+    "C++": [r"\bc\+\+\b", r"\bcpp\b", r"\bgcc\b", r"\bcmake\b"],
+    "C": [r"\bc\b", r"\bclang\b", r"\bmalloc\b", r"\bpointers\b"],
+    "C#": [r"\bc#\b", r"\bcsharp\b", r"\b\.net\b", r"\bdotnet\b"],
+    "Go": [r"\bgo\b", r"\bgolang\b", r"\bgoroutine\b"],
+    "Rust": [r"\brust\b", r"\bcargo\b", r"\bcrate\b"],
+    "Ruby": [r"\bruby\b", r"\bgem\b", r"\brails\b"],
+    "PHP": [r"\bphp\b", r"\blaravel\b", r"\bcomposer\b", r"\bsymfony\b"],
+    "Swift": [r"\bswift\b", r"\bxcrun\b", r"\bios\b", r"\bxcode\b"],
+    "Kotlin": [r"\bkotlin\b", r"\bcoroutines\b"],
+
+    # ==========================
+    # FRONTEND & WEB
+    # ==========================
+    "React": [r"\breact\b", r"\bjsx\b", r"\breactnative\b", r"\bnext\.?js\b"],
+    "Vue.js": [r"\bvue\b", r"\bvuejs\b", r"\bnuxt\b"],
+    "Angular": [r"\bangular\b", r"\brxjs\b"],
+    "Svelte": [r"\bsvelte\b"],
+    "HTML/CSS": [r"\bhtml\b", r"\bhtml5\b", r"\bcss\b", r"\bcss3\b", r"\bsass\b", r"\bscss\b", r"\btailwind\b", r"\bbootstrap\b"],
+    "WebAssembly": [r"\bwasm\b", r"\bwebassembly\b"],
+
+    # ==========================
+    # DATABASE & DATI
+    # ==========================
+    "SQL": [r"\bsql\b", r"\bquery\b", r"\bmysql\b", r"\bpostgres\b", r"\bpostgresql\b", r"\bmariadb\b"],
+    "NoSQL": [r"\bnosql\b", r"\bmongo\b", r"\bmongodb\b", r"\bcassandra\b", r"\bcouchdb\b"],
+    "Redis": [r"\bredis\b", r"\bcaching\b", r"\bmemcached\b"],
+    "Data Engineering": [r"\bkafka\b", r"\bspark\b", r"\bhadoop\b", r"\belasticsearch\b"],
+
+    # ==========================
+    # INTELLIGENZA ARTIFICIALE & ML
+    # ==========================
+    "Machine Learning": [r"\bmachine learning\b", r"\bml\b", r"\bscikit-learn\b", r"\bsklearn\b"],
+    "Deep Learning": [r"\bdeep learning\b", r"\bpvtorch\b", r"\bpytorch\b", r"\btensorflow\b", r"\bkeras\b", r"\bneural network\b"],
+    "Data Science": [r"\bdata science\b", r"\bpandas\b", r"\bnumpy\b", r"\bmatplotlib\b", r"\bdata analysis\b"],
+
+    # ==========================
+    # DEVOPS & INFRASTRUTTURA
+    # ==========================
+    "Docker": [r"\bdocker\b", r"\bdockerfile\b", r"\bcontainer\b"],
+    "Kubernetes": [r"\bkubernetes\b", r"\bk8s\b", r"\bhelm\b", r"\bpod\b"],
+    "CI/CD": [r"\bci/cd\b", r"\bgithub actions\b", r"\bjenkins\b", r"\bgitlab ci\b", r"\btravis\b", r"\bpipeline\b"],
+    "Cloud Computing": [r"\baws\b", r"\bazure\b", r"\bgcp\b", r"\bgoogle cloud\b", r"\bcloud\b"],
+    "Infrastructure as Code": [r"\bterraform\b", r"\bansible\b", r"\biac\b"],
+
+    # ==========================
+    # HARD & SOFT SKILLS GENERICHE
+    # ==========================
+    "Software Testing": [r"\btest\b", r"\btesting\b", r"\bunit test\b", r"\bmock\b", r"\bjest\b", r"\bcypress\b", r"\bqa\b"],
+    "Cybersecurity": [r"\bsecurity\b", r"\bvulnerability\b", r"\bauth\b", r"\boauth\b", r"\bcwe\b", r"\bcve\b", r"\bcrypto\b", r"\bxss\b"],
+    "Performance Optimization": [r"\bperformance\b", r"\boptimization\b", r"\bmemory leak\b", r"\bprofiling\b"],
+    "Technical Writing": [r"\bdocumentation\b", r"\bdocs\b", r"\breadme\b", r"\bmarkdown\b", r"\btypo\b"],
+    "UI/UX Design": [r"\bui\b", r"\bux\b", r"\bdesign\b", r"\baccessibility\b", r"\ba11y\b", r"\bcolor\b", r"\blayout\b"]
+}
 
 # ==========================================
 # CONFIGURAZIONE AMBIENTE
@@ -80,32 +144,6 @@ def get_project_tasks(project_id, headers):
         print(f"    ❌ Errore di rete API Task: {e}")
     return []
 
-
-def get_github_project_languages(owner, repo):
-    """Chiama le API di GitHub per estrarre i linguaggi usati in un repository specifico."""
-    headers = {"Accept": "application/vnd.github.v3+json"}
-    if GITHUB_TOKEN:
-        headers["Authorization"] = f"token {GITHUB_TOKEN}"
-
-    url = f"https://api.github.com/repos/{owner}/{repo}/languages"
-
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            languages_dict = response.json()
-            return list(languages_dict.keys())
-        elif response.status_code == 403:
-            print("    ⚠️ GitHub Rate Limit superato! Aggiungi GITHUB_TOKEN nel file .env")
-        elif response.status_code == 404:
-            print(f"    ⚠️ Repo GitHub non trovato: {owner}/{repo}")
-        else:
-            print(f"    ❌ Errore API GitHub ({response.status_code}) per {owner}/{repo}")
-    except Exception as e:
-        # Se cade internet, catturiamo l'errore senza far crashare tutto lo script
-        print(f"    ❌ Errore di connessione a GitHub: {e}")
-
-    return []
-
 # ==========================================
 # LOGICA PRINCIPALE
 # ==========================================
@@ -159,35 +197,42 @@ def sync_all_task_skills():
             print("    ⏭️ Nessun task trovato per questo progetto. Salto.")
             continue
 
-        # 6. Scarichiamo le skill da GitHub
-        skills = get_github_project_languages(github_username, repo)
-
-        if not skills:
-            print("    ⏭️ Nessun linguaggio rilevato su GitHub. Salto l'aggiornamento.")
-            continue
-
-        print(f"    ⭐ Skill trovate: {', '.join(skills)}")
-        print(f"    🔄 Aggiornamento di {len(project_tasks)} task in corso...")
+        print(f"    🔄 Analisi testo e aggiornamento di {len(project_tasks)} task in corso...")
 
         # 7. Aggiorniamo i task uno a uno
         for task in project_tasks:
             task_id = task.get("id")
+            
+            # 1. Uniamo Titolo e Descrizione e convertiamo in minuscolo
+            titolo = task.get("title") or ""
+            descrizione = task.get("description") or ""
+            testo_completo = f"{titolo} {descrizione}".lower()
+            
+            # 2. Troviamo le skill con le Regex
+            skills_trovate = set()
+            for skill, keywords in SKILL_KEYWORDS.items():
+                for keyword in keywords:
+                    if re.search(keyword, testo_completo):
+                        skills_trovate.add(skill)
+                        break
+
+            if not skills_trovate:
+                # Se non trova niente salta
+                continue
+
             update_url = f"{BACKEND_URL}/api/tasks/{task_id}/update"
 
             try:
                 # Strutturiamo il JSON esattamente come si aspetta l'UpdateTaskDTO
-                payload = {"skills": skills}
+                payload = {"skills": list(skills_trovate)}
                 update_response = requests.put(update_url, json=payload, headers=admin_headers)
 
                 if update_response.status_code in [200, 201]:
-                    print(f"      ✅ Task {task_id} aggiornato!")
+                    print(f"      ✅ Task {task_id} aggiornato con: {list(skills_trovate)}")
                 else:
                     print(f"      ❌ Errore aggiornamento task {task_id}: {update_response.status_code}")
             except Exception as e:
                 print(f"      ❌ Errore di rete su task {task_id}: {e}")
-
-        # Piccola pausa di cortesia per evitare che GitHub blocchi il tuo IP
-        time.sleep(0.5)
 
     print("\n🎉 SINCRONIZZAZIONE COMPLETATA CON SUCCESSO!")
 

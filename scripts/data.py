@@ -243,7 +243,7 @@ def extract_project_data(repo_fullname):
     project_data = {
         "projectName": repo,
         "owner": owner,
-        "interestAreas": topics,
+        "tags": topics,
         "tasks": []
     }
 

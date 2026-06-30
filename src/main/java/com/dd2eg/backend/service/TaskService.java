@@ -210,6 +210,7 @@ public class TaskService {
         document.put("projectId", project.getId());
         document.put("acceptedBy", currentUser.getId());
         document.put("skills", task.getSkills());
+        document.put("priority", task.getPriority());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
@@ -219,6 +220,7 @@ public class TaskService {
 
     /**
      * Get a task by id
+     * 
      * @param taskId
      * @return
      */
@@ -232,5 +234,24 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
         taskRepository.delete(task);
+    }
+
+    public Task updateTask(String taskId, com.dd2eg.backend.DTO.UpdateTaskDTO dto, User currentUser) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+
+        if (dto.getSkills() != null) {
+            task.setSkills(dto.getSkills());
+
+            Event event = new Event();
+            event.setType(com.dd2eg.backend.utils.EventType.UPDATE_TASK_SKILLS);
+            org.bson.Document payload = new org.bson.Document();
+            payload.put("taskId", taskId);
+            payload.put("skills", dto.getSkills());
+            event.setPayload(payload.toJson());
+            eventRepository.save(event);
+        }
+
+        return taskRepository.save(task);
     }
 }

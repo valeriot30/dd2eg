@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class FinancingRecommendationDTO {
     private final String recommendedProjectId; // ID del progetto da finanziare
-    private final long sharedInterestAreaCount; // numero di interest area in comune
-    private final List<String> matchingInterestAreas; // lista delle interest area in comune
+    private final long sharedTagCount; // numero di tag in comune
+    private final List<String> matchingTags; // lista dei tag in comune
     private final long availableTasks; // numero di task disponibili nel progetto
 }

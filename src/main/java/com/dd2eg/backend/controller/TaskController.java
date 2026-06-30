@@ -147,4 +147,24 @@ public class TaskController {
         }
     }
 
+    @Operation(
+            summary = "Update a task",
+            description = "Allows updating a task's properties such as skills"
+    )
+    @ApiResponse(responseCode = "200", description = "Task updated successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request or business rule violation")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PutMapping("/{taskId}/update")
+    public ResponseEntity<?> updateTask(
+            @PathVariable String taskId,
+            @RequestBody com.dd2eg.backend.DTO.UpdateTaskDTO dto,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            Task updatedTask = taskService.updateTask(taskId, dto, currentUser);
+            return ResponseEntity.ok(updatedTask);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }

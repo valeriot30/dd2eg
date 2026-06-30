@@ -29,19 +29,19 @@ public class Neo4jRecommendationRepository {
 
     /**
      * Query 1 — Project Recommendation per Developer.
-     * Trova progetti aperti che condividono interest area con quelli su cui il dev ha
+     * Trova progetti aperti che condividono tag con quelli su cui il dev ha
      * lavorato, e che hanno task aperti compatibili con le sue skill.
      */
     private static final String PROJECT_RECOMMENDATION_QUERY = """
-            MATCH (dev:Developer {id: $devId})-[:WORK_ON]->(:Task)-[:BELONGS_TO]->(:Project)-[:CATEGORIZED_BY]->(interestArea:InterestArea)
-            MATCH (interestArea)<-[:CATEGORIZED_BY]-(recProj:Project {status:'open'})<-[:BELONGS_TO]-(task:Task {status: 'open'})
+            MATCH (dev:Developer {id: $devId})-[:WORK_ON]->(:Task)-[:BELONGS_TO]->(:Project)-[:CATEGORIZED_BY]->(tag:Tag)
+            MATCH (tag)<-[:CATEGORIZED_BY]-(recProj:Project {status:'open'})<-[:BELONGS_TO]-(task:Task {status: 'open'})
             WHERE NOT (dev)-[:WORK_ON]->(task) AND NOT (dev)-[:CREATED]->(recProj)
             MATCH (dev)-[:HAS_SKILL]->(skill:Skill)<-[:REQUIRES_SKILL]-(task)
             RETURN recProj.id AS RecommendedProject,
-                   count(DISTINCT interestArea) AS SharedInterestAreaCount,
+                   count(DISTINCT tag) AS SharedTagCount,
                    count(DISTINCT task) AS OpenMatchingTasks,
                    collect(DISTINCT skill.name) AS MatchingSkills
-            ORDER BY SharedInterestAreaCount DESC, OpenMatchingTasks DESC
+            ORDER BY SharedTagCount DESC, OpenMatchingTasks DESC
             LIMIT 10
             """;
 
@@ -83,19 +83,19 @@ public class Neo4jRecommendationRepository {
 
     /**
      * Query 4 — Financing Recommendation per Enterprise.
-     * Suggerisce progetti aperti basandosi sulle interest area dei progetti
+     * Suggerisce progetti aperti basandosi sui tag dei progetti
      * precedentemente finanziati dall'Enterprise.
      */
     private static final String FINANCING_RECOMMENDATION_QUERY = """
-            MATCH (ent:Enterprise {id: $entId})-[:FINANCED]->(:Task)-[:BELONGS_TO]->(:Project)-[:CATEGORIZED_BY]->(interestArea:InterestArea)
-            MATCH (interestArea)<-[:CATEGORIZED_BY]-(recProj:Project {status:'open'})
+            MATCH (ent:Enterprise {id: $entId})-[:FINANCED]->(:Task)-[:BELONGS_TO]->(:Project)-[:CATEGORIZED_BY]->(tag:Tag)
+            MATCH (tag)<-[:CATEGORIZED_BY]-(recProj:Project {status:'open'})
             WHERE NOT (ent)-[:FINANCED]->(:Task)-[:BELONGS_TO]-(recProj)
             OPTIONAL MATCH (recProj)<-[:BELONGS_TO]-(openTask:Task {status: 'open'})
             RETURN recProj.id AS RecommendedProject,
-                   count(DISTINCT interestArea) AS SharedInterestAreaCount,
-                   collect(DISTINCT interestArea.name) AS MatchingInterestAreas,
+                   count(DISTINCT tag) AS SharedTagCount,
+                   collect(DISTINCT tag.name) AS MatchingTags,
                    count(DISTINCT openTask) AS AvailableTask
-            ORDER BY SharedInterestAreaCount DESC, AvailableTask DESC
+            ORDER BY SharedTagCount DESC, AvailableTask DESC
             LIMIT 10
             """;
 
@@ -168,7 +168,7 @@ public class Neo4jRecommendationRepository {
                     Record record = result.next();
                     recommendations.add(new ProjectRecommendationDTO(
                             record.get("RecommendedProject").asString(),
-                            record.get("SharedInterestAreaCount").asLong(),
+                            record.get("SharedTagCount").asLong(),
                             record.get("OpenMatchingTasks").asLong(),
                             record.get("MatchingSkills").asList(Value::asString)));
                 }
@@ -226,8 +226,8 @@ public class Neo4jRecommendationRepository {
                     Record record = result.next();
                     recommendations.add(new FinancingRecommendationDTO(
                             record.get("RecommendedProject").asString(),
-                            record.get("SharedInterestAreaCount").asLong(),
-                            record.get("MatchingInterestAreas").asList(Value::asString),
+                            record.get("SharedTagCount").asLong(),
+                            record.get("MatchingTags").asList(Value::asString),
                             record.get("AvailableTask").asLong()));
                 }
                 return recommendations;

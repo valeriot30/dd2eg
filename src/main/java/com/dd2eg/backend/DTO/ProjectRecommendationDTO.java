@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ProjectRecommendationDTO {
     private final String recommendedProjectId; // ID del progetto raccomandato
-    private final long sharedInterestAreaCount; // numero di interest area in comune
+    private final long sharedTagCount; // numero di tag in comune
     private final long openMatchingTasks; // numero di task aperti compatibili
     private final List<String> matchingSkills; // lista delle skill matchate
 }
