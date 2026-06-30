@@ -61,6 +61,11 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+    }
+
     /**
      * Create a user
      * @param user the created user
