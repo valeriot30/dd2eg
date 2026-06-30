@@ -5,6 +5,7 @@ import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
 import com.dd2eg.backend.service.UserService;
 import com.dd2eg.backend.utils.UserType;
+import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -193,8 +194,15 @@ class UserServiceTest {
                 .thenReturn(aggregationResults);
 
         List<String> devs = List.of("dev1", "dev2");
-        when(mongoTemplate.findDistinct(any(Query.class), eq("contributors"), eq(Task.class), eq(String.class)))
+        when(mongoTemplate.findDistinct(any(Query.class), eq("commits.authorId"), eq(Task.class), eq(String.class)))
                 .thenReturn(devs);
+
+        @SuppressWarnings("unchecked")
+        AggregationResults<Document> contributionResults = mock(AggregationResults.class);
+        when(contributionResults.getUniqueMappedResult())
+                .thenReturn(new Document("totalContributions", 3));
+        when(mongoTemplate.aggregate(any(Aggregation.class), eq("tasks"), eq(Document.class)))
+                .thenReturn(contributionResults);
 
         EnterpriseStatsDTO result = userService.getEnterpriseDashboardStats(enterpriseId);
 
@@ -202,6 +210,7 @@ class UserServiceTest {
         assertEquals(5, result.getOpenedTasks());
         assertEquals(10, result.getCompletedTasks());
         assertEquals(1000, result.getTotalBudgetSpent());
+        assertEquals(3, result.getTotalContributions());
         assertEquals(2, result.getUniqueDevelopersInvolved());
     }
 
@@ -216,8 +225,14 @@ class UserServiceTest {
         when(mongoTemplate.aggregate(any(Aggregation.class), eq("tasks"), eq(EnterpriseStatsDTO.class)))
                 .thenReturn(aggregationResults);
 
-        when(mongoTemplate.findDistinct(any(Query.class), eq("contributors"), eq(Task.class), eq(String.class)))
+        when(mongoTemplate.findDistinct(any(Query.class), eq("commits.authorId"), eq(Task.class), eq(String.class)))
                 .thenReturn(List.of());
+
+        @SuppressWarnings("unchecked")
+        AggregationResults<Document> contributionResults = mock(AggregationResults.class);
+        when(contributionResults.getUniqueMappedResult()).thenReturn(null);
+        when(mongoTemplate.aggregate(any(Aggregation.class), eq("tasks"), eq(Document.class)))
+                .thenReturn(contributionResults);
 
         EnterpriseStatsDTO result = userService.getEnterpriseDashboardStats(enterpriseId);
 
@@ -225,6 +240,7 @@ class UserServiceTest {
         assertEquals(0, result.getOpenedTasks());
         assertEquals(0, result.getCompletedTasks());
         assertEquals(0, result.getTotalBudgetSpent());
+        assertEquals(0, result.getTotalContributions());
         assertEquals(0, result.getUniqueDevelopersInvolved());
     }
 }

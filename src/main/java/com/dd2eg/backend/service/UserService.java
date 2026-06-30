@@ -12,6 +12,7 @@ import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
 import com.dd2eg.backend.DTO.TopContributorDTO;
+import com.dd2eg.backend.utils.TaskStatus;
 import com.dd2eg.backend.utils.UserType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -193,18 +194,35 @@ public class UserService {
 
     public EnterpriseStatsDTO getEnterpriseDashboardStats(String enterpriseId) {
         Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(
+                        Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+                ),
 
-                Aggregation.match(Criteria.where("enterpriseId").is(enterpriseId)),
+                Aggregation.unwind("sponsorships"),
+
+                Aggregation.match(
+                        Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+                ),
+
+                Aggregation.group("_id")
+                        .first("status").as("status")
+                        .sum("sponsorships.amount").as("enterpriseBudgetSpent"),
 
                 Aggregation.group()
-                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("OPEN"))
-                                .then(1).otherwise(0)).as("openedTasks")
+                        .sum(ConditionalOperators.when(
+                                ComparisonOperators.Eq.valueOf("status")
+                                        .equalToValue(TaskStatus.OPEN.name())
+                        ).then(1).otherwise(0))
+                        .as("openedTasks")
 
-                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("COMPLETED"))
-                                .then(1).otherwise(0)).as("completedTasks")
+                        .sum(ConditionalOperators.when(
+                                ComparisonOperators.Eq.valueOf("status")
+                                        .equalToValue(TaskStatus.COMPLETED.name())
+                        ).then(1).otherwise(0))
+                        .as("completedTasks")
 
-                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("COMPLETED"))
-                                .thenValueOf("$budget").otherwise(0)).as("totalBudgetSpent")
+                        .sum("enterpriseBudgetSpent")
+                        .as("totalBudgetSpent")
         );
 
         AggregationResults<EnterpriseStatsDTO> results = mongoTemplate.aggregate(
@@ -218,15 +236,41 @@ public class UserService {
             dashboardData = new EnterpriseStatsDTO();
         }
 
-        Query query = new Query(Criteria.where("enterpriseId").is(enterpriseId));
+        Query query = new Query(
+                Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+        );
+
         List<String> uniqueDevelopers = mongoTemplate.findDistinct(
                 query,
-                "contributors",
+                "commits.authorId",
                 Task.class,
                 String.class
         );
 
         dashboardData.setUniqueDevelopersInvolved(uniqueDevelopers.size());
+
+        Aggregation contributionsAggregation = Aggregation.newAggregation(
+                Aggregation.match(
+                        Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+                ),
+                Aggregation.unwind("commits"),
+                Aggregation.match(
+                        Criteria.where("commits.authorId").ne(null)
+                ),
+                Aggregation.count().as("totalContributions")
+        );
+
+        Document contributionsResult = mongoTemplate.aggregate(
+                contributionsAggregation,
+                "tasks",
+                Document.class
+        ).getUniqueMappedResult();
+
+        dashboardData.setTotalContributions(
+                contributionsResult == null
+                        ? 0
+                        : contributionsResult.getInteger("totalContributions", 0)
+        );
 
         return dashboardData;
     }
