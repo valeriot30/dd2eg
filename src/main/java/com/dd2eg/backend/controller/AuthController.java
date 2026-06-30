@@ -103,7 +103,9 @@ public class AuthController {
     @ApiResponse(responseCode = "201", description = "User created successfully")
     @ApiResponse(responseCode = "409", description = "Email already exists")
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody SignupRequestDTO request) {
+    public ResponseEntity<?> signup(
+            @RequestBody SignupRequestDTO request,
+            @AuthenticationPrincipal User currentUser) {
 
         Optional<User> existingUser = userService.getUserByEmail(request.getEmail());
 
@@ -113,6 +115,16 @@ public class AuthController {
                     .body(new Message(
                             "EMAIL_ALREADY_EXISTS",
                             "A user with this email already exists"
+                    ));
+        }
+
+        if (request.getRole() == UserType.ADMIN
+                && (currentUser == null || currentUser.getUserType() != UserType.ADMIN)) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new Message(
+                            "ADMIN_CREATION_FORBIDDEN",
+                            "Only admins can create new admins"
                     ));
         }
 

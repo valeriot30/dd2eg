@@ -57,6 +57,21 @@ public class UserController {
     }
 
     @Operation(
+            summary = "Get user by username",
+            description = "Returns a user based on their username"
+    )
+    @ApiResponse(responseCode = "200", description = "User found successfully")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @GetMapping("/users/username/{username}")
+    public ResponseEntity<?> getUserByUsername(@PathVariable String username) {
+        try {
+            return ResponseEntity.ok(userService.getUserByUsername(username));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @Operation(
             summary = "Update user skills",
             description = "Updates the list of skills for the authenticated user"
     )
