@@ -12,6 +12,7 @@ import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
 import com.dd2eg.backend.DTO.TopContributorDTO;
+import com.dd2eg.backend.DTO.UserProfileDTO;
 import com.dd2eg.backend.utils.TaskStatus;
 import com.dd2eg.backend.utils.UserType;
 import jakarta.transaction.Transactional;
@@ -52,8 +53,36 @@ public class UserService {
     private final ProjectMongoRepository projectRepo;
     private final Neo4jRecommendationRepository neo4jRepo;
 
-    public User getUserById(String id) {
-        return userRepository.findById(id).orElse(null);
+    public UserProfileDTO getUserById(String id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        List<String> interestAreas = neo4jRepo.getDeveloperInterestAreas(id);
+
+        List<String> skills = user.getSkills() == null
+                ? List.of()
+                : user.getSkills().stream()
+                        .map(Skill::getName)
+                        .filter(name -> name != null && !name.isBlank())
+                        .distinct()
+                        .toList();
+
+        return UserProfileDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .profilePic(user.getProfilePic())
+                .userType(user.getUserType())
+                .developerInfo(user.getDeveloperInfo())
+                .enterpriseInfo(user.getEnterpriseInfo())
+                .lastProjects(user.getLastProjects())
+                .lastContributions(user.getLastContributions())
+                .ownedProjects(user.getOwnedProjects())
+                .rating(user.getDeveloperInfo() == null
+                        ? null
+                        : user.getDeveloperInfo().getRating())
+                .skills(skills)
+                .interestAreas(interestAreas)
+                .build();
     }
 
     public List<User> getAllUsers() {
