@@ -1,8 +1,9 @@
 package com.dd2eg.backend.repository;
 
 import com.dd2eg.backend.DTO.ProjectDTO;
-import com.dd2eg.backend.model.Project;
 import com.dd2eg.backend.DTO.TopContributorDTO;
+import com.dd2eg.backend.DTO.FundedProjectDTO;
+import com.dd2eg.backend.model.Project;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -24,57 +25,10 @@ public interface ProjectMongoRepository extends MongoRepository<Project, String>
     boolean existsByName(String name);
 
     @Aggregation(pipeline = {
-
-            """
-            { $match: { $expr: { $eq: [ { $toString: '$_id' }, ?0 ] } } }
-            """,
-
-            """
-            { $addFields: { stringId: { $toString: '$_id' } } }
-            """,
-
-            """
-            { $lookup: { 
-                from: 'tasks', 
-                localField: 'stringId', 
-                foreignField: 'projectId', 
-                as: 'tasks' 
-            } }
-            """,
-
-            """
-            { $project: {
-                id: '$_id',
-                name: '$name',
-                description: '$description',
-                ownerName: '$owner',
-                openTasks: {
-                    $filter: {
-                        input: '$tasks',
-                        as: 'task',
-                        cond: { $eq: ['$$task.status', 'OPEN'] }
-                    }
-                },
-                avgContributionsPerTask: {
-                    $avg: {
-                        $map: {
-                            input: '$tasks',
-                            as: 't',
-                            in: { $size: { $ifNull: ['$$t.commits', []] } }
-                        }
-                    }
-                },
-                totalActiveContributors: {
-                    $size: {
-                        $reduce: {
-                            input: '$tasks.contributors',
-                            initialValue: [],
-                            in: { $setUnion: ['$$value', '$$this'] }
-                        }
-                    }
-                }
-            } }
-            """
+            "{ $match: { 'tasks.sponsorships.enterpriseId': ?0 } }",
+            "{ $project: { name: 1, description: 1, fundedTasks: { $filter: { input: '$tasks', as: 'task', cond: { $in: [ ?0, '$$task.sponsorships.enterpriseId' ] } } } } }",
+            "{ $project: { name: 1, description: 1, requiredSkills: { $reduce: { input: '$fundedTasks.skills', initialValue: [], in: { $setUnion: [ '$$value', '$$this' ] } } } } }"
     })
-    ProjectDTO findProjectDetailsById(String projectId);
+    List<FundedProjectDTO> findProjectsFundedByEnterprise(String enterpriseId);
+
 }

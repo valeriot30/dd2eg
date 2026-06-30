@@ -3,6 +3,7 @@ package com.dd2eg.backend.service;
 import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
 import com.dd2eg.backend.DTO.CreateDevReportDTO;
+import com.dd2eg.backend.DTO.FundedProjectDTO;
 import com.dd2eg.backend.DTO.ReportedDeveloperDTO;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
@@ -322,5 +323,9 @@ public class UserService {
         }
 
         return developer.getDeveloperInfo().getDevReports();
+    }
+
+    public List<FundedProjectDTO> getProjectsFundedByEnterprise(String enterpriseId) {
+        return projectRepo.findProjectsFundedByEnterprise(enterpriseId);
     }
 }

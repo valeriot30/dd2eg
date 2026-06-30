@@ -30,6 +30,7 @@ com/dd2eg/backend/service/RecommendationService.class
 com/dd2eg/backend/config/OpenApiConfig.class
 com/dd2eg/backend/controller/UserController.class
 com/dd2eg/backend/DTO/TopContributorDTO.class
+com/dd2eg/backend/DTO/FundedProjectDTO.class
 com/dd2eg/backend/DTO/ReportedDeveloperDTO.class
 com/dd2eg/backend/controller/AdminTaskManagementController.class
 com/dd2eg/backend/DTO/CreateProjectDTO.class
@@ -66,6 +67,7 @@ com/dd2eg/backend/model/EnterpriseInfo.class
 com/dd2eg/backend/DTO/OpenTaskDTO.class
 com/dd2eg/backend/model/Task.class
 com/dd2eg/backend/DTO/ReportedProjectDTO.class
+com/dd2eg/backend/DTO/FundedProjectDTO$FundedProjectDTOBuilder.class
 com/dd2eg/backend/service/UserService.class
 com/dd2eg/backend/DTO/FundTaskRequestDTO.class
 com/dd2eg/backend/controller/RecommendationController.class

@@ -13,6 +13,7 @@
 /Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/EnterpriseStatsDTO.java
 /Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/FinancingRecommendationDTO.java
 /Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/FundTaskRequestDTO.java
+/Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/FundedProjectDTO.java
 /Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/LoginRequestDTO.java
 /Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/OpenTaskDTO.java
 /Users/valeriot/Desktop/dd2eg/src/main/java/com/dd2eg/backend/DTO/OwnedProjectDTO.java

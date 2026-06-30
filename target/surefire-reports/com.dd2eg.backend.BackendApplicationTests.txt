@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.dd2eg.backend.BackendApplicationTests
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.886 s -- in com.dd2eg.backend.BackendApplicationTests
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.088 s -- in com.dd2eg.backend.BackendApplicationTests
