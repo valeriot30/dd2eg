@@ -31,7 +31,7 @@ public class Project {
     private String description;
 
     @Indexed
-    private List<String> interestAreas;
+    private List<String> tags;
 
     private ProjectStatus status;
 

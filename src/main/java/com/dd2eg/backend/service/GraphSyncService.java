@@ -26,7 +26,8 @@ import java.util.List;
  * 1. Reads Events with PENDING status from the MongoDB collection
  * 2. For each event, executes the corresponding Cypher query on Neo4j
  * 3. On success → status = COMPLETED
- * 4. On error → increments retryCount; if retryCount >= MAX_RETRIES → status = FAILED
+ * 4. On error → increments retryCount; if retryCount >= MAX_RETRIES → status =
+ * FAILED
  *
  * FAILED events can be manually reprocessed by the admin
  * through the AdminSyncController.
@@ -48,9 +49,9 @@ public class GraphSyncService {
     private final MongoTemplate mongoTemplate;
 
     public GraphSyncService(EventRepository eventRepository,
-                            Neo4jWriteRepository neo4jWriteRepository,
-                            AnomalyDetectionService anomalyDetectionService,
-                            MongoTemplate mongoTemplate) {
+            Neo4jWriteRepository neo4jWriteRepository,
+            AnomalyDetectionService anomalyDetectionService,
+            MongoTemplate mongoTemplate) {
         this.eventRepository = eventRepository;
         this.neo4jWriteRepository = neo4jWriteRepository;
         this.anomalyDetectionService = anomalyDetectionService;
@@ -59,7 +60,8 @@ public class GraphSyncService {
 
     /**
      * Scheduled job: processes all PENDING events.
-     * The interval is configurable via the graph.sync.interval property (default: 30s).
+     * The interval is configurable via the graph.sync.interval property (default:
+     * 30s).
      */
     @Scheduled(fixedRateString = "${graph.sync.interval:30000}")
     public void syncPendingEvents() {
@@ -152,7 +154,8 @@ public class GraphSyncService {
                 .orElseThrow(() -> new RuntimeException("Event not found: " + eventId));
 
         if (event.getStatus() != EventStatus.FAILED) {
-            throw new RuntimeException("Event " + eventId + " is not in FAILED status (current: " + event.getStatus() + ")");
+            throw new RuntimeException(
+                    "Event " + eventId + " is not in FAILED status (current: " + event.getStatus() + ")");
         }
 
         log.info("[GraphSync] Admin retry for single event: {} (type={})", eventId, event.getType());
@@ -190,7 +193,8 @@ public class GraphSyncService {
             case FUNDING -> processFunding(payload);
             case ADD_WORKER_TO_TASK -> processAddWorkerToTask(payload);
             case UPDATE_USER_SKILLS -> processUpdateUserSkills(payload);
-            default -> throw new RuntimeException("Unknown event type: " + event.getType());
+            case UPDATE_TASK_SKILLS -> processUpdateTaskSkills(payload);
+            default -> log.warn("[GraphSync] Unknown event type: {}", event.getType());
         }
     }
 
@@ -244,15 +248,21 @@ public class GraphSyncService {
         neo4jWriteRepository.updateUserSkills(userId, skillNames);
     }
 
+    private void processUpdateTaskSkills(Document payload) {
+        String taskId = payload.getString("taskId");
+        List<String> skills = payload.getList("skills", String.class);
+        neo4jWriteRepository.updateTaskSkills(taskId, skills);
+    }
+
     private void processAddProject(Document payload) {
         String projectId = payload.getString("projectId");
         String creatorId = payload.getString("creatorId");
         Object statusObj = payload.get("status");
         String status = statusObj != null ? statusObj.toString().toLowerCase() : "open";
 
-        List<String> interestAreas = payload.getList("interestAreas", String.class);
+        List<String> tags = payload.getList("tags", String.class);
 
-        neo4jWriteRepository.createProject(projectId, creatorId, status, interestAreas);
+        neo4jWriteRepository.createProject(projectId, creatorId, status, tags);
     }
 
     private void processAddTask(Document payload) {
@@ -277,7 +287,8 @@ public class GraphSyncService {
      * Processes a FUNDING event:
      * 1. Creates the FINANCED relationship on Neo4j
      * 2. Runs anomaly detection for the involved Enterprise
-     * 3. If suspicious cycles are found, saves alerts to the "anomaly_alerts" MongoDB collection
+     * 3. If suspicious cycles are found, saves alerts to the "anomaly_alerts"
+     * MongoDB collection
      */
     private void processFunding(Document payload) {
         String enterpriseId = payload.getString("enterpriseId");
@@ -308,7 +319,8 @@ public class GraphSyncService {
                         alert.put("resolved", false);
 
                         mongoTemplate.save(alert, "anomaly_alerts");
-                        log.warn("[AnomalyDetection]   → Cross-Enterprise match with Enterprise {}", anomaly.getEnterpriseB());
+                        log.warn("[AnomalyDetection]   → Cross-Enterprise match with Enterprise {}",
+                                anomaly.getEnterpriseB());
                     }
                 }
 
@@ -326,7 +338,8 @@ public class GraphSyncService {
                         alert.put("resolved", false);
 
                         mongoTemplate.save(alert, "anomaly_alerts");
-                        log.warn("[AnomalyDetection]   → Dev-Enterprise match with Developer {}", anomaly.getFraudsterDeveloperId());
+                        log.warn("[AnomalyDetection]   → Dev-Enterprise match with Developer {}",
+                                anomaly.getFraudsterDeveloperId());
                     }
                 }
             }

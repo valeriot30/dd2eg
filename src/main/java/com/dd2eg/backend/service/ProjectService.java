@@ -71,7 +71,7 @@ public class ProjectService {
         newProject.setName(project.getName());
         newProject.setCreatorId(currentUser.getId());
         newProject.setDescription(project.getDescription());
-        newProject.setInterestAreas(project.getInterestAreas());
+        newProject.setTags(project.getTags());
 
         if (newProject.getStatus() == null) {
             newProject.setStatus(ProjectStatus.OPEN);
@@ -98,7 +98,7 @@ public class ProjectService {
         document.put("projectId", savedProject.getId());
         document.put("creatorId", currentUser.getId());
         document.put("status", savedProject.getStatus().name());
-        document.put("interestAreas", project.getInterestAreas());
+        document.put("tags", project.getTags());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);
@@ -346,18 +346,18 @@ public class ProjectService {
     }
 
     /**
-     * Filter projects by a list of interest areas
+     * Filter projects by a list of tags
      *
-     * @param interestAreas list of interest areas to filter by
+     * @param tags list of tags to filter by
      * @return list of matching projects
      */
-    public List<Project> filterProjectsByInterestAreas(List<String> interestAreas) {
+    public List<Project> filterProjectsByTags(List<String> tags) {
 
-        if (interestAreas == null || interestAreas.isEmpty()) {
+        if (tags == null || tags.isEmpty()) {
             return projectRepository.findAll();
         }
 
-        return projectRepository.findByInterestAreasIn(interestAreas);
+        return projectRepository.findByTagsIn(tags);
     }
 
     public ProjectScamReport createProjectScamReport(String projectId, CreateProjectScamReportDTO request, User reportingUser) {

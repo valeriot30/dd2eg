@@ -44,7 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/projects", "/api/projects/**").permitAll()
                         .requestMatchers("/api/tasks", "/api/tasks/**").permitAll()
                         .requestMatchers("/api/users", "/api/users/**").permitAll()
-                        .requestMatchers("/api/recommendations", "/api/recommendations/**").permitAll()
+                        .requestMatchers("/api/recommendations", "/api/recommendations/**").authenticated()
 
                         .anyRequest().authenticated()
                 )

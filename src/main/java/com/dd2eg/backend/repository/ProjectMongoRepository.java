@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface ProjectMongoRepository extends MongoRepository<Project, String> {
     List<Project> findAllBy(TextCriteria textCriteria);
-    List<Project> findByInterestAreasIn(List<String> interestAreas);
+    List<Project> findByTagsIn(List<String> tags);
     @Aggregation(pipeline = {
             "{ $match: { 'contributors.0': { $exists: true } } }",
             "{ $unwind: '$contributors' }",
