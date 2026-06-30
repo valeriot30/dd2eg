@@ -28,6 +28,7 @@ public class User implements UserDetails {
     @Id
     private String id;
 
+    @Indexed
     private String username;
 
     @Indexed(unique = true)
