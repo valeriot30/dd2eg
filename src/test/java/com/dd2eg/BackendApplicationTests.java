@@ -1,4 +1,4 @@
-package com.dd2eg.backend;
+package com.dd2eg;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,4 +1,4 @@
-package com.dd2eg.backend;
+package com.dd2eg;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

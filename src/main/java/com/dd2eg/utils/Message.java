@@ -1,4 +1,4 @@
-package com.dd2eg.backend.utils;
+package com.dd2eg.utils;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
