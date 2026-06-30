@@ -259,8 +259,18 @@ public class GraphSyncService {
         String taskId = payload.getString("taskId");
         String projectId = payload.getString("projectId");
         List<String> skills = payload.getList("skills", String.class);
+        String priorityStr = payload.getString("priority");
+        
+        long priority = 1; // Default to LOW
+        if ("HIGH".equalsIgnoreCase(priorityStr)) {
+            priority = 3;
+        } else if ("MEDIUM".equalsIgnoreCase(priorityStr)) {
+            priority = 2;
+        } else if ("LOW".equalsIgnoreCase(priorityStr)) {
+            priority = 1;
+        }
 
-        neo4jWriteRepository.createTask(taskId, projectId, skills);
+        neo4jWriteRepository.createTask(taskId, projectId, skills, priority);
     }
 
     /**

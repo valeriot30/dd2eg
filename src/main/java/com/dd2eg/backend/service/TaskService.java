@@ -210,6 +210,7 @@ public class TaskService {
         document.put("projectId", project.getId());
         document.put("acceptedBy", currentUser.getId());
         document.put("skills", task.getSkills());
+        document.put("priority", task.getPriority());
         event.setPayload(document.toJson());
 
         eventRepository.save(event);

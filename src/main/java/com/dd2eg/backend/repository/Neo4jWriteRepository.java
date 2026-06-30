@@ -139,18 +139,18 @@ public class Neo4jWriteRepository {
      * (:Task {id, status})-[:BELONGS_TO]->(:Project {id})
      * (:Task {id})-[:REQUIRES_SKILL]->(:Skill {name})
      */
-    public void createTask(String taskId, String projectId, List<String> skills) {
+    public void createTask(String taskId, String projectId, List<String> skills, long priority) {
         try (Session session = driver.session(SessionConfig.defaultConfig())) {
             session.executeWrite(tx -> {
                 // Create the task node and link it to the project
                 tx.run("""
                         MERGE (t:Task {id: $taskId})
-                        SET t.status = 'open'
+                        SET t.status = 'open', t.priority = $priority
                         WITH t
                         MATCH (p:Project {id: $projectId})
                         MERGE (t)-[:BELONGS_TO]->(p)
                         """,
-                        Map.of("taskId", taskId, "projectId", projectId));
+                        Map.of("taskId", taskId, "projectId", projectId, "priority", priority));
 
                 // Create required skills and REQUIRES_SKILL relationships
                 if (skills != null) {
