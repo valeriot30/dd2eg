@@ -45,6 +45,9 @@ class UserServiceTest {
     private ProjectMongoRepository projectRepo;
 
     @Mock
+    private TaskRepository taskRepository;
+
+    @Mock
     private Neo4jRecommendationRepository neo4jRepo;
 
     @InjectMocks

@@ -2,7 +2,6 @@ package com.dd2eg.backend.repository;
 
 import com.dd2eg.backend.DTO.ProjectDTO;
 import com.dd2eg.backend.DTO.TopContributorDTO;
-import com.dd2eg.backend.DTO.FundedProjectDTO;
 import com.dd2eg.backend.model.Project;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.repository.Aggregation;
@@ -24,12 +23,5 @@ public interface ProjectMongoRepository extends MongoRepository<Project, String>
     List<TopContributorDTO> findTopContributors(int limit);
 
     boolean existsByName(String name);
-
-    @Aggregation(pipeline = {
-            "{ $match: { 'tasks.sponsorships.enterpriseId': ?0 } }",
-            "{ $project: { name: 1, description: 1, fundedTasks: { $filter: { input: '$tasks', as: 'task', cond: { $in: [ ?0, '$$task.sponsorships.enterpriseId' ] } } } } }",
-            "{ $project: { name: 1, description: 1, requiredSkills: { $reduce: { input: '$fundedTasks.skills', initialValue: [], in: { $setUnion: [ '$$value', '$$this' ] } } } } }"
-    })
-    List<FundedProjectDTO> findProjectsFundedByEnterprise(String enterpriseId);
 
 }

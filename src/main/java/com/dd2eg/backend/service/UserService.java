@@ -4,6 +4,7 @@ import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
 import com.dd2eg.backend.DTO.CreateDevReportDTO;
 import com.dd2eg.backend.DTO.FundedProjectDTO;
+import com.dd2eg.backend.DTO.FundedProjectSkillsDTO;
 import com.dd2eg.backend.DTO.ReportedDeveloperDTO;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
@@ -50,6 +51,7 @@ public class UserService {
     private final SkillRepository skillRepository;
     private final MongoTemplate mongoTemplate;
     private final ProjectMongoRepository projectRepo;
+    private final TaskRepository taskRepository;
     private final Neo4jRecommendationRepository neo4jRepo;
 
     public User getUserById(String id) {
@@ -272,6 +274,10 @@ public class UserService {
                         : contributionsResult.getInteger("totalContributions", 0)
         );
 
+        dashboardData.setFundedProjects(
+                getProjectsFundedByEnterprise(enterpriseId)
+        );
+
         return dashboardData;
     }
 
@@ -370,6 +376,27 @@ public class UserService {
     }
 
     public List<FundedProjectDTO> getProjectsFundedByEnterprise(String enterpriseId) {
-        return projectRepo.findProjectsFundedByEnterprise(enterpriseId);
+        List<FundedProjectSkillsDTO> fundedProjects =
+                taskRepository.findFundedProjectSkillsByEnterprise(enterpriseId);
+
+        Map<String, Project> projectsById = projectRepo.findAllById(
+                        fundedProjects.stream()
+                                .map(FundedProjectSkillsDTO::getProjectId)
+                                .toList()
+                ).stream()
+                .collect(Collectors.toMap(Project::getId, project -> project));
+
+        return fundedProjects.stream()
+                .filter(fundedProject -> projectsById.containsKey(fundedProject.getProjectId()))
+                .map(fundedProject -> {
+                    Project project = projectsById.get(fundedProject.getProjectId());
+                    return FundedProjectDTO.builder()
+                            .id(project.getId())
+                            .name(project.getName())
+                            .description(project.getDescription())
+                            .requiredSkills(fundedProject.getRequiredSkills())
+                            .build();
+                })
+                .toList();
     }
 }
