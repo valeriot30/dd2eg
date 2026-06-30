@@ -270,7 +270,7 @@ public class GraphSyncService {
         String projectId = payload.getString("projectId");
         List<String> skills = payload.getList("skills", String.class);
         String priorityStr = payload.getString("priority");
-
+        
         long priority = 1; // Default to LOW
         if ("HIGH".equalsIgnoreCase(priorityStr)) {
             priority = 3;

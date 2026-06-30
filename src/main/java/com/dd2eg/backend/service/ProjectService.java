@@ -1,6 +1,10 @@
 package com.dd2eg.backend.service;
 
 import com.dd2eg.backend.DTO.*;
+import java.time.Instant;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.util.Objects;
 import com.dd2eg.backend.model.Project;
 import com.dd2eg.backend.model.ProjectScamReport;
 import com.dd2eg.backend.repository.ProjectMongoRepository;
@@ -9,6 +13,9 @@ import com.dd2eg.backend.model.Event;
 import com.dd2eg.backend.repository.EventRepository;
 import com.dd2eg.backend.utils.EventType;
 import com.dd2eg.backend.model.User;
+import com.dd2eg.backend.model.Task;
+import com.dd2eg.backend.repository.TaskRepository;
+import com.dd2eg.backend.repository.UserMongoRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.bson.Document;
@@ -28,9 +35,11 @@ import java.util.ArrayList;
 @Service
 public class ProjectService {
 
-    private ProjectMongoRepository projectRepository;
-    private EventRepository eventRepository;
+    private final ProjectMongoRepository projectRepository;
+    private final EventRepository eventRepository;
     private final MongoTemplate mongoTemplate;
+    private final TaskRepository taskRepository;
+    private final UserMongoRepository userRepository;
 
     private static final Integer NUM_LAST_PROJECTS = 10;
 
@@ -97,8 +106,107 @@ public class ProjectService {
         return savedProject;
     }
 
+    private Instant getInstantFromObjectId(String id) {
+        if (id == null || id.length() != 24) {
+            return null;
+        }
+        try {
+            return new org.bson.types.ObjectId(id).getDate().toInstant();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     public ProjectDTO getProjectById(String projectId) {
-        return projectRepository.findProjectDetailsById(projectId);
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+        String ownerName = null;
+        if (project.getCreatorId() != null) {
+            ownerName = userRepository.findById(project.getCreatorId())
+                    .map(User::getUsername)
+                    .orElse(null);
+        }
+
+        List<Task> tasks = taskRepository.findByProjectId(projectId);
+
+        List<OpenTaskDTO> openTasks = tasks.stream()
+                .filter(t -> t.getStatus() == com.dd2eg.backend.utils.TaskStatus.OPEN)
+                .map(t -> {
+                    OpenTaskDTO dto = new OpenTaskDTO();
+                    dto.setId(t.getId());
+                    dto.setDescription(t.getDescription());
+                    dto.setTitle(t.getTitle());
+                    dto.setStatus(t.getStatus());
+                    dto.setPriority(t.getPriority());
+                    dto.setSkills(t.getSkills());
+                    return dto;
+                })
+                .toList();
+
+        long totalActiveContributors = project.getContributors() != null ? project.getContributors().size() : 0L;
+
+        double avgContributionsPerTask = tasks.isEmpty() ? 0.0 : tasks.stream()
+                .mapToDouble(t -> t.getCommits() == null ? 0 : t.getCommits().stream().filter(c -> c != null && c.getHash() != null).count())
+                .average()
+                .orElse(0.0);
+
+        Double avgFirstResponseTimeInHours = null;
+        List<Double> responseTimes = new ArrayList<>();
+        Double avgResolutionTimeInHours = null;
+        List<Double> resolutionTimes = new ArrayList<>();
+
+        for (Task t : tasks) {
+            Instant taskCreatedAt = getInstantFromObjectId(t.getId());
+            if (taskCreatedAt == null) continue;
+
+            // 1. First Response Time (using comments)
+            if (t.getComments() != null && !t.getComments().isEmpty()) {
+                java.time.LocalDateTime firstCommentTime = t.getComments().stream()
+                        .map(com.dd2eg.backend.model.Comment::getCreatedAt)
+                        .min(java.time.LocalDateTime::compareTo)
+                        .orElse(null);
+                if (firstCommentTime != null) {
+                    Instant firstCommentInstant = firstCommentTime.atZone(ZoneId.systemDefault()).toInstant();
+                    double hours = Duration.between(taskCreatedAt, firstCommentInstant).toMillis() / (1000.0 * 60.0 * 60.0);
+                    responseTimes.add(hours);
+                }
+            }
+
+            // 2. Resolution Time (using commits)
+            if (t.getCommits() != null) {
+                Instant lastCommitAt = t.getCommits().stream()
+                        .filter(c -> c != null && c.getId() != null)
+                        .map(c -> getInstantFromObjectId(c.getId()))
+                        .filter(Objects::nonNull)
+                        .max(Instant::compareTo)
+                        .orElse(null);
+                if (lastCommitAt != null) {
+                    double hours = Duration.between(taskCreatedAt, lastCommitAt).toMillis() / (1000.0 * 60.0 * 60.0);
+                    resolutionTimes.add(hours);
+                }
+            }
+        }
+
+        if (!responseTimes.isEmpty()) {
+            avgFirstResponseTimeInHours = responseTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        }
+
+        if (!resolutionTimes.isEmpty()) {
+            avgResolutionTimeInHours = resolutionTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        }
+
+        return ProjectDTO.builder()
+                .id(project.getId())
+                .name(project.getName())
+                .description(project.getDescription())
+                .ownerName(ownerName)
+                .openTasks(openTasks)
+                .totalActiveContributors(totalActiveContributors)
+                .avgContributionsPerTask(avgContributionsPerTask)
+                .avgFirstResponseTimeInHours(avgFirstResponseTimeInHours)
+                .avgResolutionTimeInHours(avgResolutionTimeInHours)
+                .build();
     }
 
     /**

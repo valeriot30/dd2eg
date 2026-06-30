@@ -3,6 +3,7 @@ package com.dd2eg.backend.service;
 import com.dd2eg.backend.model.*;
 import com.dd2eg.backend.repository.*;
 import com.dd2eg.backend.DTO.CreateDevReportDTO;
+import com.dd2eg.backend.DTO.FundedProjectDTO;
 import com.dd2eg.backend.DTO.ReportedDeveloperDTO;
 import com.dd2eg.backend.DTO.ProjectRecommendationDTO;
 import com.dd2eg.backend.DTO.SkillRecommendationDTO;
@@ -10,6 +11,8 @@ import com.dd2eg.backend.utils.EventType;
 import com.dd2eg.backend.DTO.DeveloperStatsDTO;
 import com.dd2eg.backend.DTO.EnterpriseStatsDTO;
 import com.dd2eg.backend.DTO.RecentProjectDTO;
+import com.dd2eg.backend.DTO.TopContributorDTO;
+import com.dd2eg.backend.utils.TaskStatus;
 import com.dd2eg.backend.utils.UserType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -163,7 +166,20 @@ public class UserService {
 
         stats.setTrendingProjects(dashboardProjects);
 
-        stats.setTopContributors(projectRepo.findTopContributors(10));
+        List<TopContributorDTO> topContributors = projectRepo.findTopContributors(10);
+        List<String> userIds = topContributors.stream()
+                .map(TopContributorDTO::getUsername)
+                .toList();
+        List<User> users = userRepository.findAllById(userIds);
+        Map<String, String> idToUsernameMap = users.stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        for (TopContributorDTO tc : topContributors) {
+            String username = idToUsernameMap.get(tc.getUsername());
+            if (username != null) {
+                tc.setUsername(username);
+            }
+        }
+        stats.setTopContributors(topContributors);
 
         List<SkillRecommendationDTO> skillRecs = neo4jRepo.getSkillRecommendations(userId);
 
@@ -178,18 +194,35 @@ public class UserService {
 
     public EnterpriseStatsDTO getEnterpriseDashboardStats(String enterpriseId) {
         Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(
+                        Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+                ),
 
-                Aggregation.match(Criteria.where("enterpriseId").is(enterpriseId)),
+                Aggregation.unwind("sponsorships"),
+
+                Aggregation.match(
+                        Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+                ),
+
+                Aggregation.group("_id")
+                        .first("status").as("status")
+                        .sum("sponsorships.amount").as("enterpriseBudgetSpent"),
 
                 Aggregation.group()
-                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("OPEN"))
-                                .then(1).otherwise(0)).as("openedTasks")
+                        .sum(ConditionalOperators.when(
+                                ComparisonOperators.Eq.valueOf("status")
+                                        .equalToValue(TaskStatus.OPEN.name())
+                        ).then(1).otherwise(0))
+                        .as("openedTasks")
 
-                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("COMPLETED"))
-                                .then(1).otherwise(0)).as("completedTasks")
+                        .sum(ConditionalOperators.when(
+                                ComparisonOperators.Eq.valueOf("status")
+                                        .equalToValue(TaskStatus.COMPLETED.name())
+                        ).then(1).otherwise(0))
+                        .as("completedTasks")
 
-                        .sum(ConditionalOperators.when(ComparisonOperators.Eq.valueOf("status").equalToValue("COMPLETED"))
-                                .thenValueOf("$budget").otherwise(0)).as("totalBudgetSpent")
+                        .sum("enterpriseBudgetSpent")
+                        .as("totalBudgetSpent")
         );
 
         AggregationResults<EnterpriseStatsDTO> results = mongoTemplate.aggregate(
@@ -203,15 +236,41 @@ public class UserService {
             dashboardData = new EnterpriseStatsDTO();
         }
 
-        Query query = new Query(Criteria.where("enterpriseId").is(enterpriseId));
+        Query query = new Query(
+                Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+        );
+
         List<String> uniqueDevelopers = mongoTemplate.findDistinct(
                 query,
-                "contributors",
+                "commits.authorId",
                 Task.class,
                 String.class
         );
 
         dashboardData.setUniqueDevelopersInvolved(uniqueDevelopers.size());
+
+        Aggregation contributionsAggregation = Aggregation.newAggregation(
+                Aggregation.match(
+                        Criteria.where("sponsorships.enterpriseId").is(enterpriseId)
+                ),
+                Aggregation.unwind("commits"),
+                Aggregation.match(
+                        Criteria.where("commits.authorId").ne(null)
+                ),
+                Aggregation.count().as("totalContributions")
+        );
+
+        Document contributionsResult = mongoTemplate.aggregate(
+                contributionsAggregation,
+                "tasks",
+                Document.class
+        ).getUniqueMappedResult();
+
+        dashboardData.setTotalContributions(
+                contributionsResult == null
+                        ? 0
+                        : contributionsResult.getInteger("totalContributions", 0)
+        );
 
         return dashboardData;
     }
@@ -308,5 +367,9 @@ public class UserService {
         }
 
         return developer.getDeveloperInfo().getDevReports();
+    }
+
+    public List<FundedProjectDTO> getProjectsFundedByEnterprise(String enterpriseId) {
+        return projectRepo.findProjectsFundedByEnterprise(enterpriseId);
     }
 }

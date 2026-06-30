@@ -244,4 +244,21 @@ public class UserController {
 
         return ResponseEntity.ok(userService.getEnterpriseDashboardStats(currentUser.getId()));
     }
+
+    @Operation(
+            summary = "Get projects funded by enterprise",
+            description = "Returns list of projects funded by the authenticated enterprise"
+    )
+    @ApiResponse(responseCode = "200", description = "List of funded projects retrieved successfully")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @ApiResponse(responseCode = "403", description = "Forbidden - User is not an enterprise")
+    @GetMapping("/users/enterprise/funded-projects")
+    public ResponseEntity<?> getFundedProjects(@AuthenticationPrincipal User currentUser) {
+        if (currentUser.getUserType() != UserType.ENTERPRISE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Not authorized: This endpoint is for enterprises only");
+        }
+
+        return ResponseEntity.ok(userService.getProjectsFundedByEnterprise(currentUser.getId()));
+    }
 }
