@@ -14,6 +14,7 @@ public interface ProjectMongoRepository extends MongoRepository<Project, String>
     List<Project> findAllBy(TextCriteria textCriteria);
     List<Project> findByInterestAreasIn(List<String> interestAreas);
     @Aggregation(pipeline = {
+            "{ $match: { 'contributors.0': { $exists: true } } }",
             "{ $unwind: '$contributors' }",
             "{ $group: { _id: '$contributors', projectCount: { $sum: 1 } } }",
             "{ $project: { username: '$_id', projectCount: 1, _id: 0 } }",
