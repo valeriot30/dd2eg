@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Sharded;
@@ -28,18 +29,25 @@ public class User implements UserDetails {
     @Id
     private String id;
 
+    @TextIndexed
     private String username;
 
     @Indexed(unique = true)
     private String email;
 
+    private String profilePic;
+
     private String password;
 
     private UserType userType = UserType.DEVELOPER;
 
-    private Double rating = 0.0;
+    private DeveloperInfo developerInfo;
 
-    private List<Skill> skills;
+    private EnterpriseInfo enterpriseInfo;
+
+    private List<Skill> skills = new ArrayList<>();
+
+    private boolean enabled = true;
 
     @DBRef
     private List<Project> ownedProjects = new ArrayList<>();
@@ -71,6 +79,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return this.enabled;
     }
 }

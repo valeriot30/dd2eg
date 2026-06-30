@@ -7,7 +7,6 @@ import com.dd2eg.backend.repository.TaskRepository;
 import com.dd2eg.backend.utils.TaskStatus;
 import com.dd2eg.backend.model.Comment;
 import com.dd2eg.backend.model.Commit;
-import com.dd2eg.backend.repository.CommitMongoRepository;
 import com.dd2eg.backend.DTO.CreateCommitDTO;
 import com.dd2eg.backend.DTO.CreateTaskDTO;
 import com.dd2eg.backend.DTO.FundTaskRequestDTO;
@@ -33,7 +32,6 @@ public class TaskService {
     private final EventRepository eventRepository;
     private final UserMongoRepository userRepository;
     private final ProjectMongoRepository projectRepository;
-    private final CommitMongoRepository commitRepository;
     private final ProjectService projectService;
 
     @Transactional
@@ -108,24 +106,25 @@ public class TaskService {
             throw new RuntimeException("Task does not belong to a project");
         }
 
+        ensureCommitSlots(task);
+
         int index = task.getCurrentIndex();
         if (index >= task.getNumMaxCommits()) {
             throw new RuntimeException("Max commits reached for this task");
         }
 
         Commit commit = task.getCommits().get(index);
+        if (commit == null) {
+            commit = new Commit();
+        }
         commit.setHash(dto.getHash());
         commit.setComment(dto.getComment());
         commit.setNumLines(dto.getNumLines());
 
-        commit.setTaskId(task.getId());
-        commit.setProjectId(task.getProjectId());
         commit.setAuthorId(currentUser.getId());
         commit.setAuthorUsername(currentUser.getUsername());
 
         task.getCommits().set(index, commit);
-
-        Commit savedCommit = commitRepository.save(commit);
 
         projectService.addContributorToProjectIfMissing(task.getProjectId(), currentUser);
 
@@ -139,9 +138,23 @@ public class TaskService {
 
         eventRepository.save(event);
 
-        taskRepository.save(task);
+        Task savedTask = taskRepository.save(task);
 
-        return savedCommit;
+        return savedTask.getCommits().get(index);
+    }
+
+    private void ensureCommitSlots(Task task) {
+        if (task.getNumMaxCommits() == null || task.getNumMaxCommits() <= 0) {
+            throw new RuntimeException("Task does not define a valid maximum number of commits");
+        }
+
+        if (task.getCommits() == null) {
+            task.setCommits(new ArrayList<>());
+        }
+
+        while (task.getCommits().size() < task.getNumMaxCommits()) {
+            task.getCommits().add(new Commit());
+        }
     }
 
     public List<Task> getTasksByProjectId(String projectId) {
@@ -212,5 +225,12 @@ public class TaskService {
     public Task getTaskById(String taskId) {
         return taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+    }
+
+    public void deleteTask(String taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+
+        taskRepository.delete(task);
     }
 }

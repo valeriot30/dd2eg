@@ -31,7 +31,7 @@ public class Project {
     private String description;
 
     @Indexed
-    private List<String> tags;
+    private List<String> interestAreas;
 
     private ProjectStatus status;
 
@@ -44,6 +44,8 @@ public class Project {
     private Integer budget;
 
     private Integer scamReports;
+
+    private List<ProjectScamReport> scamReportList = new ArrayList<>();
 
     private String creatorId;
 

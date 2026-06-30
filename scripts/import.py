@@ -24,6 +24,30 @@ if not ADMIN_EMAIL or not ADMIN_PASSWORD:
 # ==========================================
 TOKEN_CACHE = {}
 
+def get_github_role(username):
+    """Interroga GitHub per capire se l'account è un'azienda o una persona."""
+    url = f"https://api.github.com/users/{username}"
+
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    github_token = os.getenv("GITHUB_TOKEN")
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
+
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            # Se GitHub ci dice che è un'Organizzazione, è un'Enterprise!
+            if data.get("type") == "Organization":
+                return "ENTERPRISE"
+            # Potresti anche intercettare i "Bot" se vuoi gestirli
+            elif data.get("type") == "Bot":
+                return "DEVELOPER" # o un ruolo custom se lo creerai
+    except Exception as e:
+        print(f"    ⚠️ Impossibile verificare il ruolo per {username}: {e}")
+
+    return "DEVELOPER"
+
 def get_auth_headers(email, password):
     """Logs in and returns the headers with the JWT token. Uses cache."""
     if email in TOKEN_CACHE:
@@ -94,12 +118,17 @@ def import_system_data(limit=None):
     user_url = f"{BACKEND_URL}/api/users"
 
     for username in unique_users:
+
+        github_avatar_url = f"https://github.com/{username}.png"
+        real_role = get_github_role(username)
+
         user_payload = {
             "username": username,
             "name": username,
             "email": f"{username}@github.dev",
             "password": "Password123!",
-            "userType": "DEVELOPER"
+            "userType": real_role,
+            "profilePic": github_avatar_url
         }
 
         try:
@@ -122,7 +151,7 @@ def import_system_data(limit=None):
         project_payload = {
             "name": project.get("projectName", "Unknown Project"),
             "description": f"Open Source Project imported from GitHub ({owner_username}/{project.get('projectName', '')}).",
-            "tags": project.get("tags", [])
+            "interestAreas": project.get("interestAreas", [])
         }
 
         print(f"📦 Importing Project: {project_payload['name']}...")
